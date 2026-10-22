@@ -9,6 +9,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.SystemClock
+import android.view.View
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -20,8 +23,11 @@ import java.util.Date
  * next change. Android counts the chronometer down by itself, so nothing runs in between.
  *
  * - During a break: "Eye break" counting down to the end, with Stop (ends the break).
- * - Between breaks: "Next break" counting down to the next reminder, with Stop (stops reminders).
+ * - Between breaks: "Next break in" counting down to the next reminder, with Stop (stops reminders).
  *   More than two hours away (e.g. overnight), it shows the time instead of a long countdown.
+ *
+ * The body is a small custom layout (title + countdown line) inside the standard notification
+ * frame, so the time reads like normal text. A custom body rules out Android 16 Live Updates.
  */
 object TimerRenderer {
   const val NOTIFICATION_ID = 4201
@@ -54,7 +60,7 @@ object TimerRenderer {
     }
     if (next - now > FAR_MS) {
       val time = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(next))
-      post(ctx, plan.nextAtTitle.replace("%s", time), next, countdown = false, stopAction = TimerReceiver.ACTION_STOP, plan, chipText = time)
+      post(ctx, plan.nextAtTitle.replace("%s", time), next, countdown = false, stopAction = TimerReceiver.ACTION_STOP, plan)
       scheduleAlarm(ctx, next - FAR_MS)
     } else {
       post(ctx, plan.nextTitle, next, countdown = true, stopAction = TimerReceiver.ACTION_STOP, plan)
@@ -80,12 +86,26 @@ object TimerRenderer {
     countdown: Boolean,
     stopAction: String,
     plan: TimerPlan,
-    chipText: String? = null,
   ) {
+    val body = RemoteViews(ctx.packageName, R.layout.quack_timer_content)
+    body.setTextViewText(R.id.quack_timer_title, title)
+    if (countdown) {
+      // Chronometer counts against the elapsed-time clock, which doesn't jump when the wall clock changes.
+      val base = SystemClock.elapsedRealtime() + (target - System.currentTimeMillis())
+      body.setChronometer(R.id.quack_timer_clock, base, null, true)
+      body.setChronometerCountDown(R.id.quack_timer_clock, true)
+      body.setViewVisibility(R.id.quack_timer_clock, View.VISIBLE)
+    } else {
+      body.setViewVisibility(R.id.quack_timer_clock, View.GONE)
+    }
+
     val builder = NotificationCompat.Builder(ctx, CHANNEL_ID)
       .setSmallIcon(smallIcon(ctx))
       .setColor(COLOR)
       .setContentTitle(title)
+      .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+      .setCustomContentView(body)
+      .setShowWhen(false)
       .setOngoing(true)
       .setOnlyAlertOnce(true)
       .setSilent(true)
@@ -93,16 +113,8 @@ object TimerRenderer {
       .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
       .setContentIntent(openApp(ctx))
       .addAction(0, plan.stopLabel, receiverIntent(ctx, stopAction))
-    if (countdown) {
-      builder.setWhen(target).setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(true)
-      // Disappear exactly when it hits zero; the alarm then shows what comes next.
-      builder.setTimeoutAfter(target - System.currentTimeMillis())
-    } else {
-      builder.setShowWhen(false)
-    }
-    // Android 16+: show as a Live Update, with a chip in the status bar. Older versions ignore it.
-    builder.setRequestPromotedOngoing(true)
-    if (chipText != null) builder.setShortCriticalText(chipText)
+    // Disappear exactly when the countdown hits zero; the alarm then shows what comes next.
+    if (countdown) builder.setTimeoutAfter(target - System.currentTimeMillis())
     try {
       NotificationManagerCompat.from(ctx).notify(NOTIFICATION_ID, builder.build())
     } catch (e: SecurityException) {
@@ -113,7 +125,7 @@ object TimerRenderer {
   private fun ensureChannel(ctx: Context, name: String) {
     if (Build.VERSION.SDK_INT < 26) return
     val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
-    // Low importance: no sound, no pop-up. (Live Updates don't allow IMPORTANCE_MIN.)
+    // Low importance: no sound, no pop-up.
     val channel = NotificationChannel(CHANNEL_ID, name, NotificationManager.IMPORTANCE_LOW).apply {
       description = "Countdown to your next break"
       setShowBadge(false)

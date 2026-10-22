@@ -9,7 +9,7 @@ import { updateData } from './storage';
 export { onTimerAction, timerAvailable };
 
 const TEXT = {
-  nextTitle: 'Next break',
+  nextTitle: 'Next break in',
   nextAtTitle: 'Next break at %s',
   breakTitle: 'Eye break',
   stopLabel: 'Stop',

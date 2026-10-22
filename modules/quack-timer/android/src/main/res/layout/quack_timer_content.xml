@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Timer notification body: a title and a countdown that Android ticks by itself. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/quack_timer_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:singleLine="true"
+        android:ellipsize="end"
+        android:textAppearance="@style/TextAppearance.Compat.Notification.Title" />
+
+    <Chronometer
+        android:id="@+id/quack_timer_clock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:countDown="true"
+        android:textAppearance="@style/TextAppearance.Compat.Notification" />
+</LinearLayout>
