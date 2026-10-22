@@ -3,7 +3,6 @@ package expo.modules.quacktimer
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import expo.modules.notifications.service.NotificationsService
 
 /**
  * Handles the Stop button, the timer's own alarms, and re-showing the timer after a reboot
@@ -20,7 +19,7 @@ class TimerReceiver : BroadcastReceiver() {
     when (intent.action) {
       ACTION_STOP -> {
         // Stop reminders: cancel everything expo-notifications has booked and hide the timer.
-        NotificationsService.removeAllScheduledNotifications(context)
+        ExpoNotificationsBridge.removeAll(context)
         TimerStore.plan(context)?.let { TimerStore.savePlan(context, it.copy(breakEndsAt = 0, overId = "", reminders = emptyList())) }
         TimerStore.addAction(context, "stop")
         TimerRenderer.cancel(context)
@@ -30,7 +29,7 @@ class TimerReceiver : BroadcastReceiver() {
         // End the break early: drop its "break over" alert and go back to the next-break countdown.
         val plan = TimerStore.plan(context)
         if (plan != null) {
-          if (plan.overId.isNotEmpty()) NotificationsService.removeScheduledNotifications(context, listOf(plan.overId))
+          if (plan.overId.isNotEmpty()) ExpoNotificationsBridge.remove(context, listOf(plan.overId))
           TimerStore.savePlan(context, plan.copy(breakEndsAt = 0, overId = ""))
         }
         TimerStore.addAction(context, "endBreak")

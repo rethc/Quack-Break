@@ -18,7 +18,7 @@ android {
 }
 
 dependencies {
-  // Stop cancels the reminders that expo-notifications has booked.
-  implementation project(':expo-notifications')
+  // Stop cancels expo-notifications' booked reminders by calling it by name at runtime
+  // (see ExpoNotificationsBridge), so there's no compile-time dependency on it.
   implementation 'androidx.core:core:1.17.0'
 }
