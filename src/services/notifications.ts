@@ -18,7 +18,12 @@ export const CATEGORY_DUE = 'break_due';
 export const ACTION_START = 'start_break';
 export const ACTION_SNOOZE = 'snooze';
 
-const CHANNEL_PREFIX = 'breaks_';
+// Android keeps deleted channels and restores their old settings (sound included) if a channel
+// with the same id is created again. Channels from builds that lacked the sound files kept a
+// fallback sound, so v2 uses a new prefix to start clean. Old prefixes are cleaned up.
+const CHANNEL_PREFIX = 'alerts2_';
+const OLD_CHANNEL_PREFIXES = ['breaks_'];
+const ownsChannel = (id: string) => id.startsWith(CHANNEL_PREFIX) || OLD_CHANNEL_PREFIXES.some((p) => id.startsWith(p));
 const TEST_PREFIX = 'test_';
 /** Ignore taps on notifications older than this (e.g. found in the tray hours later). */
 const STALE_MS = 30 * MINUTE;
@@ -90,13 +95,34 @@ const channelIdFor = (m: Moment) => {
 // Android channels can't change sound/vibration after creation,
 // so each moment + sound + vibration gets its own channel id and unused ones are deleted.
 let readyChannels: string | null = null;
+let prunedChannels: string | null = null;
 
-export async function ensureChannels(): Promise<Record<Moment, string> | undefined> {
+/**
+ * Make sure both moments' channels exist for the current settings. Only `prune` (used when
+ * syncing the schedule) deletes channels that are no longer used: a preview may still be
+ * waiting to play on the previous sound's channel.
+ */
+export async function ensureChannels(prune = false): Promise<Record<Moment, string> | undefined> {
   if (Platform.OS !== 'android') return undefined;
-  const s = getData().settings;
   const ids: Record<Moment, string> = { start: channelIdFor('start'), end: channelIdFor('end') };
   const key = `${ids.start}|${ids.end}`;
-  if (readyChannels === key) return ids;
+  if (readyChannels !== key) await createChannels(ids);
+  readyChannels = key;
+  if (prune && prunedChannels !== key) {
+    const keep = new Set(Object.values(ids));
+    const channels = await Notifications.getNotificationChannelsAsync();
+    await Promise.all(
+      channels
+        .filter((c) => ownsChannel(c.id) && !keep.has(c.id))
+        .map((c) => Notifications.deleteNotificationChannelAsync(c.id)),
+    );
+    prunedChannels = key;
+  }
+  return ids;
+}
+
+async function createChannels(ids: Record<Moment, string>) {
+  const s = getData().settings;
   for (const m of MOMENTS) {
     const vibrate = vibrateOf(m, s);
     await Notifications.setNotificationChannelAsync(ids[m], {
@@ -111,15 +137,6 @@ export async function ensureChannels(): Promise<Record<Moment, string> | undefin
       showBadge: false,
     });
   }
-  const keep = new Set(Object.values(ids));
-  const channels = await Notifications.getNotificationChannelsAsync();
-  await Promise.all(
-    channels
-      .filter((c) => c.id.startsWith(CHANNEL_PREFIX) && !keep.has(c.id))
-      .map((c) => Notifications.deleteNotificationChannelAsync(c.id)),
-  );
-  readyChannels = key;
-  return ids;
 }
 
 let readyCategory: number | null = null;
@@ -194,7 +211,7 @@ async function doSync() {
   }
   const exact = await hasExactAlarms();
   const rearm = Platform.OS === 'android' && armedWithExact !== exact;
-  const channels = await ensureChannels();
+  const channels = await ensureChannels(true);
   await ensureCategory();
 
   const want = planNotifications(data, Date.now());
