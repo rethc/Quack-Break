@@ -75,6 +75,7 @@ export function planBreaks(
   const breakActive = timer.breakEndsAt !== null && timer.breakEndsAt > now;
   const start = cadenceStart(now, timer, q);
   const dueAt = start + work;
+  if (timer.paused && !breakActive) return { overdue: false, quietNow, breakActive, dueAt, reminders: [] };
   const overdue = !quietNow && !breakActive && now >= dueAt;
 
   // First reminder strictly in the future.

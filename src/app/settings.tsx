@@ -5,38 +5,28 @@ import { AppState, Linking, Platform, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { BackIcon, IconButton } from '@/components/Icons';
 import { Screen } from '@/components/Screen';
-import { Card, ChoiceRow, Stepper, ToggleRow } from '@/components/SettingRows';
+import { Card, LinkRow, Stepper, ToggleRow } from '@/components/SettingRows';
 import { Text } from '@/components/Text';
-import { ANDROID_ONLY_SOUNDS, SOUND_OPTIONS, soundFile, VOICE_OPTIONS, type Moment } from '@/core/sounds';
-import { updateSettings } from '@/core/transitions';
-import { BREAK_CHOICES, RULE_BREAK_SEC, RULE_WORK_MIN, SNOOZE_CHOICES, WORK_CHOICES, type Settings } from '@/core/types';
+import { soundLabel } from '@/core/sounds';
+import { BREAK_CHOICES, RULE_BREAK_SEC, RULE_WORK_MIN, SNOOZE_CHOICES, WORK_CHOICES } from '@/core/types';
 import { haptic } from '@/services/haptics';
 import {
   canNotify,
   hasExactAlarms,
   needsExactAlarmPermission,
-  openPhoneSoundPicker,
-  previewSound,
   requestExactAlarms,
   requestNotificationPermission,
   sendTestReminder,
   syncSchedule,
 } from '@/services/notifications';
-import { updateData, useData } from '@/services/storage';
+import { saveSettings } from '@/services/settings';
+import { timerAvailable } from '@/services/timer';
+import { useData } from '@/services/storage';
 import { useTheme } from '@/theme';
 import { formatMinuteOfDay } from '@/utils/format';
 
 const TIME_CHOICES = Array.from({ length: 48 }, (_, i) => i * 30);
 
-const SOUNDS = SOUND_OPTIONS.filter((o) => Platform.OS === 'android' || !ANDROID_ONLY_SOUNDS.includes(o.value));
-
-let syncTimer: ReturnType<typeof setTimeout> | undefined;
-function saveSettings(patch: Partial<Settings>) {
-  updateData((d) => updateSettings(d, patch));
-  // Wait for the user to stop tapping before rebuilding the schedule.
-  clearTimeout(syncTimer);
-  syncTimer = setTimeout(() => void syncSchedule(), 600);
-}
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
@@ -115,28 +105,46 @@ export default function SettingsScreen() {
         )}
       </Card>
 
-      <Card title="Sound and vibration">
-        <MomentSound moment="start" label="Break reminder" s={s} />
-        <MomentSound moment="end" label="Break over" s={s} />
-        {(s.startSound === 'voice' || s.endSound === 'voice') && (
+      <Card title="Sound">
+        <LinkRow
+          label="Break reminder"
+          value={soundLabel('start', s)}
+          onPress={() => router.push({ pathname: '/sound', params: { moment: 'start' } })}
+        />
+        <LinkRow
+          label="Break over"
+          value={soundLabel('end', s)}
+          onPress={() => router.push({ pathname: '/sound', params: { moment: 'end' } })}
+        />
+      </Card>
+
+      <Card title="Vibration">
+        {/* iPhone alerts vibrate according to the phone's own settings. */}
+        {Platform.OS === 'android' && (
           <>
-            <ChoiceRow
-              label="Voice"
-              value={s.voice}
-              options={VOICE_OPTIONS}
-              columns={4}
+            <ToggleRow
+              label="Break reminder"
+              a11yLabel="Vibrate for the break reminder"
+              value={s.startVibrate}
               onChange={(v) => {
-                saveSettings({ voice: v });
-                void previewSound(`voice_${v}_rest.wav`);
+                saveSettings({ startVibrate: v });
+                if (v) haptic.preview();
+              }}
+            />
+            <ToggleRow
+              label="Break over"
+              a11yLabel="Vibrate when a break is over"
+              value={s.endVibrate}
+              onChange={(v) => {
+                saveSettings({ endVibrate: v });
+                if (v) haptic.preview();
               }}
             />
           </>
         )}
-        <Text variant="small" soft>
-          Tap a sound to hear it. Sounds follow your phone&apos;s volume and silent mode.
-        </Text>
         <ToggleRow
-          label="Vibrate on taps"
+          label="Button taps"
+          a11yLabel="Vibrate on button taps"
           value={s.haptics}
           onChange={(v) => {
             saveSettings({ haptics: v });
@@ -146,6 +154,14 @@ export default function SettingsScreen() {
       </Card>
 
       <Card title="Reminders">
+        {timerAvailable && (
+          <ToggleRow
+            label="Timer in notifications"
+            hint="A live countdown to your next break, with a Stop button."
+            value={s.trayTimer}
+            onChange={(v) => saveSettings({ trayTimer: v })}
+          />
+        )}
         <PermissionRow ok={perms.notifications} label="Notifications" />
         {!perms.notifications && (
           <Button
@@ -190,41 +206,6 @@ export default function SettingsScreen() {
         Everything stays on this phone. No account, no tracking, no ads.
       </Text>
     </Screen>
-  );
-}
-
-/** Sound (and on Android, vibration) for one moment. Picking a sound plays it. */
-function MomentSound({ moment, label, s }: { moment: Moment; label: string; s: Settings }) {
-  const soundKey = moment === 'start' ? 'startSound' : 'endSound';
-  const vibrateKey = moment === 'start' ? 'startVibrate' : 'endVibrate';
-  return (
-    <>
-      <ChoiceRow
-        label={label}
-        value={s[soundKey]}
-        options={SOUNDS}
-        columns={4}
-        onChange={(v) => {
-          saveSettings({ [soundKey]: v });
-          void previewSound(soundFile(moment, { ...s, [soundKey]: v }));
-        }}
-      />
-      {Platform.OS === 'android' && s[soundKey] === 'phone' && (
-        <Button title="Choose phone sound" variant="secondary" onPress={() => void openPhoneSoundPicker(moment)} />
-      )}
-      {/* iPhone vibration follows the phone's own settings. */}
-      {Platform.OS === 'android' && (
-        <ToggleRow
-          label="Vibrate"
-          a11yLabel={`Vibrate for ${label.toLowerCase()}`}
-          value={s[vibrateKey]}
-          onChange={(v) => {
-            saveSettings({ [vibrateKey]: v });
-            if (v) haptic.preview();
-          }}
-        />
-      )}
-    </>
   );
 }
 

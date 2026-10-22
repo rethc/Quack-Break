@@ -36,6 +36,8 @@ export type Settings = {
   voice: VoiceId;
   /** Small vibrations when tapping buttons. */
   haptics: boolean;
+  /** Android: a live countdown in the notification tray, with a Stop button. */
+  trayTimer: boolean;
 };
 
 export type TimerState = {
@@ -45,6 +47,8 @@ export type TimerState = {
   setAt: number;
   /** Set while a break is running. */
   breakEndsAt: number | null;
+  /** Reminders are stopped until the user resumes them. */
+  paused?: boolean;
 };
 
 export type AppData = {
@@ -73,6 +77,7 @@ export const DEFAULT_SETTINGS: Settings = {
   endVibrate: true,
   voice: 'heart',
   haptics: true,
+  trayTimer: true,
 };
 
 type SavedSettings = Partial<Settings> & { sound?: boolean; startAlert?: OldAlertStyle; endAlert?: OldAlertStyle };

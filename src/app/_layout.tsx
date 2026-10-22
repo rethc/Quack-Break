@@ -9,6 +9,7 @@ import { useReducedMotion } from 'react-native-reanimated';
 import { completeBreakIfDone } from '@/services/breaks';
 import { applyResponse, installNotificationHandler, syncSchedule } from '@/services/notifications';
 import { reloadData } from '@/services/storage';
+import { applyTimerActions, onTimerAction } from '@/services/timer';
 import { useTheme } from '@/theme';
 
 installNotificationHandler();
@@ -49,16 +50,27 @@ function useCatchUpOnOpen() {
   useEffect(() => {
     const catchUp = () => {
       reloadData();
+      applyTimerActions();
       completeBreakIfDone();
-      // Old reminders in the tray are no longer useful once the app is open.
-      Notifications.dismissAllNotificationsAsync().catch(() => {});
-      void syncSchedule();
+      // Old reminders in the tray are no longer useful once the app is open. This also clears
+      // the timer notification, so sync afterwards to show it again.
+      Notifications.dismissAllNotificationsAsync()
+        .catch(() => {})
+        .finally(() => void syncSchedule());
     };
     catchUp();
     const sub = AppState.addEventListener('change', (s) => {
       if (s === 'active') catchUp();
     });
-    return () => sub.remove();
+    // Stop pressed on the timer notification while the app is running.
+    const offTimer = onTimerAction(() => {
+      applyTimerActions();
+      void syncSchedule();
+    });
+    return () => {
+      sub.remove();
+      offTimer();
+    };
   }, []);
 }
 

@@ -4,7 +4,16 @@ import { describe, it } from 'node:test';
 
 import { planNotifications, MAX_REMINDERS } from './notificationPlan.ts';
 import { dayKey, HOUR, isQuiet, MINUTE, planBreaks } from './schedule.ts';
-import { breaksOn, finishBreakIfDone, finishOnboarding, skipBreak, snooze, startBreak } from './transitions.ts';
+import {
+  breaksOn,
+  finishBreakIfDone,
+  finishOnboarding,
+  resumeReminders,
+  skipBreak,
+  snooze,
+  startBreak,
+  stopReminders,
+} from './transitions.ts';
 import { soundFile } from './sounds.ts';
 import { DEFAULT_SETTINGS, defaultData, settingsFrom, type Settings, type TimerState } from './types.ts';
 
@@ -184,6 +193,22 @@ describe('settingsFrom', () => {
     const custom = settingsFrom({ workMin: 30, breakSec: 20 });
     assert.equal(custom.rule202020, false);
     assert.equal(custom.workMin, 30);
+  });
+});
+
+describe('stopping reminders', () => {
+  it('plans no reminders while stopped, and resumes from the moment of resuming', () => {
+    const d = finishOnboarding(defaultData(at(9)), at(9));
+    const stopped = stopReminders({ ...d, settings: noQuiet }, at(10));
+    const p = planBreaks(at(11), stopped.settings, stopped.timer, { max: 3 });
+    assert.equal(p.reminders.length, 0);
+    assert.equal(p.overdue, false);
+    const resumed = resumeReminders(stopped, at(12));
+    assert.equal(planBreaks(at(12), resumed.settings, resumed.timer, { max: 1 }).reminders[0], at(12, 20));
+  });
+
+  it('turns the tray timer on by default', () => {
+    assert.equal(settingsFrom({}).trayTimer, true);
   });
 });
 

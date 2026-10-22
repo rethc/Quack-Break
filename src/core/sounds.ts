@@ -11,7 +11,7 @@ export const SOUND_OPTIONS: readonly { value: SoundId; label: string }[] = [
   { value: 'drop', label: 'Drop' },
   { value: 'bell', label: 'Bell' },
   { value: 'beep', label: 'Beep' },
-  { value: 'phone', label: 'Phone' },
+  { value: 'phone', label: 'Phone sound' },
   { value: 'none', label: 'None' },
 ];
 
@@ -24,6 +24,14 @@ export const VOICE_OPTIONS: readonly { value: VoiceId; label: string }[] = [
   { value: 'michael', label: 'Michael' },
   { value: 'george', label: 'George' },
 ];
+
+/** Short description of a moment's sound for the Settings row, e.g. "Voice · Bella". */
+export function soundLabel(m: Moment, s: Settings): string {
+  const id = m === 'start' ? s.startSound : s.endSound;
+  const label = SOUND_OPTIONS.find((o) => o.value === id)?.label ?? id;
+  if (id !== 'voice') return label;
+  return `${label} · ${VOICE_OPTIONS.find((v) => v.value === s.voice)?.label ?? s.voice}`;
+}
 
 export const soundOf = (m: Moment, s: Settings): SoundId => (m === 'start' ? s.startSound : s.endSound);
 export const vibrateOf = (m: Moment, s: Settings): boolean => (m === 'start' ? s.startVibrate : s.endVibrate);

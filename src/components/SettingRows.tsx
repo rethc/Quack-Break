@@ -2,6 +2,8 @@ import { Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { radius, useTheme } from '@/theme';
 
+import { ChevronIcon } from './Icons';
+
 import { Text } from './Text';
 
 export function Card({ children, title }: { children: React.ReactNode; title?: string }) {
@@ -194,6 +196,50 @@ export function ChoiceRow<T extends string>({
   );
 }
 
+/** A row that opens another screen, showing the current value on the right. */
+export function LinkRow({ label, value, onPress }: { label: string; value: string; onPress: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${value}`}
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
+    >
+      <Text variant="body" style={styles.flex}>
+        {label}
+      </Text>
+      <Text variant="body" soft>
+        {value}
+      </Text>
+      <ChevronIcon color={colors.inkSoft} />
+      <View style={[styles.divider, { backgroundColor: colors.cardEdge }]} />
+    </Pressable>
+  );
+}
+
+/** One choice in a list; the chosen one shows a filled circle. */
+export function RadioRow({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected }}
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
+    >
+      <View style={[styles.radio, { borderColor: selected ? colors.primaryEdge : colors.inkSoft }]}>
+        {selected ? <View style={[styles.radioDot, { backgroundColor: colors.primary }]} /> : null}
+      </View>
+      <Text variant={selected ? 'label' : 'body'} style={styles.flex}>
+        {label}
+      </Text>
+      <View style={[styles.divider, { backgroundColor: colors.cardEdge }]} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   card: { borderRadius: radius.l, borderBottomWidth: 5, padding: 18, gap: 4 },
   row: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10, paddingVertical: 10 },
@@ -209,6 +255,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   toggleRow: { gap: 2, paddingVertical: 10 },
+  radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
+  radioDot: { width: 12, height: 12, borderRadius: 6 },
   toggleTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   choiceRow: { gap: 8, paddingVertical: 10 },
   segment: { flexDirection: 'row', borderRadius: 16, padding: 4, gap: 4 },

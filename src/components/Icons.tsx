@@ -27,6 +27,14 @@ export function BackIcon({ color, size = 26 }: { color: string; size?: number })
   );
 }
 
+export function ChevronIcon({ color, size = 22 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M9 5l7 7-7 7" fill="none" stroke={color} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 export function IconButton({
   label,
   onPress,

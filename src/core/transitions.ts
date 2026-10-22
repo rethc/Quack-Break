@@ -38,6 +38,16 @@ export function snooze(data: AppData, now: number): AppData {
   };
 }
 
+/** Stop all reminders until resumed (Stop on the timer notification). Ends a running break. */
+export function stopReminders(data: AppData, now: number): AppData {
+  return { ...data, timer: { anchor: now, setAt: now, breakEndsAt: null, paused: true } };
+}
+
+/** Start reminders again, counting from now. */
+export function resumeReminders(data: AppData, now: number): AppData {
+  return { ...data, timer: { anchor: now, setAt: now, breakEndsAt: null } };
+}
+
 export function finishOnboarding(data: AppData, now: number): AppData {
   return { ...data, onboarded: true, timer: { anchor: now, setAt: now, breakEndsAt: null } };
 }

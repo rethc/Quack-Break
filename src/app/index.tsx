@@ -9,16 +9,16 @@ import { PondScene } from '@/components/PondScene';
 import { Screen } from '@/components/Screen';
 import { SpeechBubble } from '@/components/SpeechBubble';
 import { Text } from '@/components/Text';
-import { dueLines, pickFresh, quietLines, skipLines, waitingLines } from '@/core/messages';
+import { dueLines, pausedLines, pickFresh, quietLines, skipLines, waitingLines } from '@/core/messages';
 import { dayKey, nextQuietEnd, planBreaks } from '@/core/schedule';
 import { useNow } from '@/hooks/useNow';
-import { beginBreak, completeBreakIfDone, skipNow, snoozeNow } from '@/services/breaks';
+import { beginBreak, completeBreakIfDone, resumeNow, skipNow, snoozeNow } from '@/services/breaks';
 import { haptic } from '@/services/haptics';
 import { useData } from '@/services/storage';
 import { radius, useTheme } from '@/theme';
 import { formatClock, formatCountdown, formatMinuteOfDay, nextMinuteChange, spokenCountdown } from '@/utils/format';
 
-type Status = 'waiting' | 'due' | 'quiet' | 'break';
+type Status = 'waiting' | 'due' | 'quiet' | 'break' | 'paused';
 
 export default function Home() {
   const onboarded = useData((d) => d.onboarded);
@@ -35,13 +35,22 @@ function HomeScreen() {
   const now = useNow((t) => {
     const p = planBreaks(t, settings, timer, { max: 1 });
     if (p.breakActive) return timer.breakEndsAt;
+    if (timer.paused) return null;
     if (p.quietNow) return nextQuietEnd(t, settings.quiet);
     if (p.overdue) return null;
     return nextMinuteChange(p.dueAt, t);
   });
 
   const plan = planBreaks(now, settings, timer, { max: 1 });
-  const status: Status = plan.breakActive ? 'break' : plan.quietNow ? 'quiet' : plan.overdue ? 'due' : 'waiting';
+  const status: Status = plan.breakActive
+    ? 'break'
+    : timer.paused
+      ? 'paused'
+      : plan.quietNow
+        ? 'quiet'
+        : plan.overdue
+          ? 'due'
+          : 'waiting';
 
   // A break that ran out while we were looking at this screen.
   useEffect(() => {
@@ -63,7 +72,13 @@ function HomeScreen() {
   }, [reaction]);
 
   const line = useMemo(() => {
-    const lists = { waiting: waitingLines, due: dueLines, quiet: quietLines, break: ['Your break is still going!'] };
+    const lists = {
+      waiting: waitingLines,
+      due: dueLines,
+      quiet: quietLines,
+      break: ['Your break is still going!'],
+      paused: pausedLines,
+    };
     return pickFresh(lists[status]);
   }, [status]);
 
@@ -71,7 +86,7 @@ function HomeScreen() {
     ? 'shrug'
     : intro
       ? 'enter'
-      : ({ waiting: 'idle', due: 'attention', quiet: 'sleep', break: 'idle' } as const)[status];
+      : ({ waiting: 'idle', due: 'attention', quiet: 'sleep', break: 'idle', paused: 'idle' } as const)[status];
 
   const today = days[dayKey(now)] ?? 0;
   const nextReminder = plan.reminders[0];
@@ -136,6 +151,16 @@ function HomeScreen() {
             Break in progress
           </Text>
         )}
+        {status === 'paused' && (
+          <>
+            <Text variant="heading" center>
+              Reminders stopped
+            </Text>
+            <Text variant="body" soft center>
+              Resume when you&apos;re ready.
+            </Text>
+          </>
+        )}
       </View>
 
       <SpeechBubble text={reaction?.line ?? line} />
@@ -148,6 +173,18 @@ function HomeScreen() {
         {status === 'waiting' && <Button title="Take a break now" variant="secondary" onPress={start} />}
         {status === 'quiet' && <Button title="Take a break anyway" variant="secondary" onPress={start} />}
         {status === 'break' && <Button title="Back to my break" onPress={() => router.push('/break')} />}
+        {status === 'paused' && (
+          <>
+            <Button
+              title="Resume reminders"
+              onPress={() => {
+                haptic.tap();
+                resumeNow();
+              }}
+            />
+            <Button title="Take a break now" variant="secondary" onPress={start} />
+          </>
+        )}
         {status === 'due' && (
           <>
             <Button title="Start break" onPress={start} />
@@ -196,6 +233,8 @@ function statusLabel(status: Status, msLeft: number, nextReminder: number | unde
         : `Quiet hours until ${formatMinuteOfDay(quietEndMin)}`;
     case 'break':
       return 'Break in progress';
+    case 'paused':
+      return 'Reminders stopped';
   }
 }
 

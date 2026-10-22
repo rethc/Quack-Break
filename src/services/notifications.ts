@@ -12,6 +12,7 @@ import { rememberHandled, snooze, startBreak } from '@/core/transitions';
 
 import { haptic } from './haptics';
 import { getData, updateData } from './storage';
+import { updateTimer } from './timer';
 
 export const CATEGORY_DUE = 'break_due';
 export const ACTION_START = 'start_break';
@@ -73,6 +74,8 @@ const VIBRATION = [0, 120, 90, 160];
 
 const momentOf = (kind: Kind | undefined): Moment => (kind === 'over' ? 'end' : 'start');
 const fileFor = (m: Moment) => soundFile(m, getData().settings);
+const soundForChannel = (file: string | null): { sound?: string | null } =>
+  file === 'default' ? {} : { sound: file };
 const contentSound = (m: Moment) => fileFor(m) ?? false;
 // expo-notifications marks a notification SILENT unless it has a sound or its own vibration
 // pattern, even when its channel vibrates. So vibration needs the pattern here too.
@@ -99,7 +102,9 @@ export async function ensureChannels(): Promise<Record<Moment, string> | undefin
     await Notifications.setNotificationChannelAsync(ids[m], {
       ...CHANNEL_TEXT[m],
       importance: Notifications.AndroidImportance.HIGH,
-      sound: soundFile(m, s),
+      // No sound key means the phone's own notification sound ("Phone sound");
+      // null means silent. "default" isn't accepted for channels.
+      ...soundForChannel(soundFile(m, s)),
       enableVibrate: vibrate,
       vibrationPattern: vibrate ? VIBRATION : undefined,
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
@@ -123,7 +128,8 @@ async function ensureCategory() {
   const { snoozeMin } = getData().settings;
   if (readyCategory === snoozeMin) return;
   await Notifications.setNotificationCategoryAsync(CATEGORY_DUE, [
-    { identifier: ACTION_START, buttonTitle: 'Start break', options: { opensAppToForeground: true } },
+    // Android: the break runs in the tray timer, so there's no need to open the app.
+    { identifier: ACTION_START, buttonTitle: 'Start', options: { opensAppToForeground: Platform.OS !== 'android' } },
     { identifier: ACTION_SNOOZE, buttonTitle: `Snooze ${snoozeMin} min`, options: { opensAppToForeground: false } },
   ]);
   readyCategory = snoozeMin;
@@ -182,7 +188,10 @@ let armedWithExact: boolean | null = null;
 
 async function doSync() {
   const data = getData();
-  if (!data.onboarded || !(await canNotify())) return;
+  if (!data.onboarded || !(await canNotify())) {
+    updateTimer(null);
+    return;
+  }
   const exact = await hasExactAlarms();
   const rearm = Platform.OS === 'android' && armedWithExact !== exact;
   const channels = await ensureChannels();
@@ -224,6 +233,7 @@ async function doSync() {
       ),
   );
   armedWithExact = exact;
+  updateTimer(data, want);
 }
 
 /** A reminder in a few seconds, with the real buttons, for checking things work. */
@@ -250,15 +260,19 @@ export async function sendTestReminder(seconds = 10) {
 }
 
 /**
- * Play a sound now, for previews in Settings. Goes through the same path as a reminder arriving
- * while the app is open, so it needs no audio library and follows the phone's volume.
+ * Play a moment's current sound now, for previews in Settings. Goes through the same path as a
+ * reminder arriving while the app is open, so it needs no audio library and follows the phone's
+ * volume. Android plays the channel's sound (not the content's), so the moment's channel is
+ * brought up to date first and the preview is posted on it.
  */
-export async function previewSound(file: string | null) {
+export async function previewMoment(m: Moment) {
+  const file = fileFor(m);
   if (!file) return;
+  const channels = await ensureChannels();
   await Notifications.scheduleNotificationAsync({
     identifier: `preview_${Date.now()}`,
     content: { title: 'Preview', data: { kind: 'preview' }, sound: file },
-    trigger: null,
+    trigger: channels ? { channelId: channels[m] } : null,
   });
 }
 

@@ -1,5 +1,5 @@
 // User-facing break actions: update the state, then re-sync notifications.
-import { finishBreakIfDone, skipBreak, snooze, startBreak } from '@/core/transitions';
+import { finishBreakIfDone, resumeReminders, skipBreak, snooze, startBreak } from '@/core/transitions';
 
 import { syncSchedule } from './notifications';
 import { getData, updateData } from './storage';
@@ -17,6 +17,11 @@ export function completeBreakIfDone(): boolean {
 
 export function skipNow() {
   updateData((d) => skipBreak(d, Date.now()));
+  void syncSchedule();
+}
+
+export function resumeNow() {
+  updateData((d) => resumeReminders(d, Date.now()));
   void syncSchedule();
 }
 
