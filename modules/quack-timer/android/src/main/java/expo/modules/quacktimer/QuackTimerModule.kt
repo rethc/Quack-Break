@@ -28,6 +28,15 @@ class QuackTimerModule : Module() {
       TimerRenderer.render(context)
     }
 
+    /** Play a sound preview, stopping any that's playing. See SoundPreview. */
+    Function("playSound") { sound: String, channelId: String? ->
+      SoundPreview.play(context, sound, channelId)
+    }
+
+    Function("stopSound") {
+      SoundPreview.stop()
+    }
+
     /** Actions taken from the notification since last time, as a JSON array of {type, at}. */
     Function("takeActions") {
       TimerStore.takeActions(context)

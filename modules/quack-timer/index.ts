@@ -25,12 +25,34 @@ export type TimerAction = { type: 'stop' | 'endBreak'; at: number };
 type NativeTimer = {
   setPlan(json: string): void;
   takeActions(): string;
+  playSound?(sound: string, channelId: string | null): void;
+  stopSound?(): void;
   addListener(event: 'onAction', listener: () => void): { remove(): void };
 };
 
 const native = requireOptionalNativeModule<NativeTimer>('QuackTimer');
 
 export const timerAvailable = native != null;
+
+/** One-at-a-time sound previews (builds from before this existed don't have it). */
+export const soundPreviewAvailable = typeof native?.playSound === 'function';
+
+/** Play a preview, stopping any that's playing. `sound` is a file name or "default" (phone sound). */
+export function playPreviewSound(sound: string, channelId: string | null = null) {
+  try {
+    native?.playSound?.(sound, channelId);
+  } catch (e) {
+    console.warn('Could not play the sound preview', e);
+  }
+}
+
+export function stopPreviewSound() {
+  try {
+    native?.stopSound?.();
+  } catch {
+    // Nothing to stop.
+  }
+}
 
 export function setTimerPlan(plan: TimerPlan) {
   try {

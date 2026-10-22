@@ -10,7 +10,7 @@ import { Card, ChoiceRow, RadioRow } from '@/components/SettingRows';
 import { Text } from '@/components/Text';
 import { ANDROID_ONLY_SOUNDS, SOUND_OPTIONS, VOICE_OPTIONS, type Moment } from '@/core/sounds';
 import type { SoundId } from '@/core/types';
-import { openPhoneSoundPicker, previewMoment, syncSchedule } from '@/services/notifications';
+import { openPhoneSoundPicker, previewMoment, stopPreview, syncSchedule } from '@/services/notifications';
 import { saveSettings } from '@/services/settings';
 import { useData } from '@/services/storage';
 
@@ -23,8 +23,14 @@ export default function SoundScreen() {
   const s = useData((d) => d.settings);
   const current = s[key];
 
-  // Rebook reminders with the new sound once, when leaving this screen.
-  useEffect(() => () => void syncSchedule(), []);
+  // When leaving: stop any preview, and rebook reminders with the new sound once.
+  useEffect(
+    () => () => {
+      stopPreview();
+      void syncSchedule();
+    },
+    [],
+  );
 
   // Choosing plays the sound; choosing the same one again replays it.
   const pick = (v: SoundId) => {

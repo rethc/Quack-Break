@@ -10,6 +10,7 @@ import { MINUTE } from '@/core/schedule';
 import { soundFile, vibrateOf, type Moment } from '@/core/sounds';
 import { rememberHandled, snooze, startBreak } from '@/core/transitions';
 
+import { playPreviewSound, soundPreviewAvailable, stopPreviewSound } from '../../modules/quack-timer';
 import { haptic } from './haptics';
 import { getData, updateData } from './storage';
 import { updateTimer } from './timer';
@@ -282,15 +283,36 @@ export async function sendTestReminder(seconds = 10) {
  * volume. Android plays the channel's sound (not the content's), so the moment's channel is
  * brought up to date first and the preview is posted on it.
  */
+let lastPreview = { file: '', at: 0 };
+
 export async function previewMoment(m: Moment) {
   const file = fileFor(m);
-  if (!file) return;
+  if (!file) {
+    stopPreviewSound();
+    return;
+  }
+  if (soundPreviewAvailable) {
+    // Android with the timer module: one preview at a time, each tap restarts it.
+    const channelId = file === 'default' ? ((await ensureChannels())?.[m] ?? null) : null;
+    playPreviewSound(file, channelId);
+    return;
+  }
+  // Otherwise the preview is a notification, which can't be stopped once playing,
+  // so repeat taps on the same sound are ignored until it has finished.
+  const now = Date.now();
+  if (lastPreview.file === file && now - lastPreview.at < 1500) return;
+  lastPreview = { file, at: now };
   const channels = await ensureChannels();
   await Notifications.scheduleNotificationAsync({
     identifier: `preview_${Date.now()}`,
     content: { title: 'Preview', data: { kind: 'preview' }, sound: file },
     trigger: channels ? { channelId: channels[m] } : null,
   });
+}
+
+/** Stop a playing preview (leaving the sound picker). */
+export function stopPreview() {
+  stopPreviewSound();
 }
 
 /** Android: open the system settings for a moment's channel, where any installed tone can be picked. */

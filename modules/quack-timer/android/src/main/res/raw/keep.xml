@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notification sounds are looked up by name at runtime (expo-notifications and SoundPreview),
+     so release builds with resource shrinking must not strip them. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/quack,@raw/chime,@raw/drop,@raw/bell,@raw/beep,@raw/voice_*" />
