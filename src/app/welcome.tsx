@@ -23,7 +23,6 @@ type Step = 'hello' | 'exact' | 'ready';
 
 export default function Welcome() {
   const workMin = useData((d) => d.settings.workMin);
-  const breakSec = useData((d) => d.settings.breakSec);
   const [step, setStep] = useState<Step>('hello');
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [mode, setMode] = useState<DuckMode>('enter');
@@ -77,12 +76,13 @@ export default function Welcome() {
         <View style={styles.block}>
           <Text variant="title">Rest your eyes, one quack at a time</Text>
           <Text variant="body">
-            {`Every ${workMin} minutes I'll remind you to look at something about 20 feet (6 m) away for ${breakSec} seconds. It's called the 20-20-20 rule, and your eyes will thank you.`}
+            The 20-20-20 rule: every 20 minutes, look at something 20 feet (6 m) away for 20 seconds. I&apos;ll
+            remind you.
           </Text>
           <Text variant="body" soft>
-            {"Skipped one? No problem. I'll just shrug."}
+            Want different timing? You can change it in Settings.
           </Text>
-          <Button title="Allow reminders" icon="🔔" onPress={allow} />
+          <Button title="Allow reminders" onPress={allow} />
         </View>
       )}
 
@@ -90,23 +90,23 @@ export default function Welcome() {
         <View style={styles.block}>
           <Text variant="title">Stay on time</Text>
           <Text variant="body">
-            To save battery, Android can hold reminders back while your phone sits idle. Turning on{' '}
-            <Text variant="label">Alarms &amp; reminders</Text> for Quack Break lets me quack right on time.
+            Android can delay reminders to save battery. Turn on <Text variant="label">Alarms &amp; reminders</Text>{' '}
+            so they arrive on time.
           </Text>
-          <Button title="Open the setting" onPress={() => void requestExactAlarms()} />
-          <Button title="Maybe later" variant="ghost" onPress={() => setStep('ready')} />
+          <Button title="Open settings" onPress={() => void requestExactAlarms()} />
+          <Button title="Not now" variant="ghost" onPress={() => setStep('ready')} />
         </View>
       )}
 
       {step === 'ready' && (
         <View style={styles.block}>
-          <Text variant="title">{allowed ? 'Ready when you are' : 'Reminders are off'}</Text>
+          <Text variant="title">{allowed ? "You're all set" : 'Reminders are off'}</Text>
           <Text variant="body">
             {allowed
-              ? `Your first reminder comes in ${workMin} minutes. You can change times, quiet hours and sounds in Settings.`
-              : 'You can turn reminders on later in Settings. While the app is open, I still keep time.'}
+              ? `First reminder in ${workMin} minutes.`
+              : 'You can turn them on later in Settings.'}
           </Text>
-          <Button title="Let's go!" onPress={finish} />
+          <Button title="Start" onPress={finish} />
         </View>
       )}
     </Screen>

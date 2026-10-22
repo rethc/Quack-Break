@@ -3,7 +3,7 @@
 import { File, Paths } from 'expo-file-system';
 import { useSyncExternalStore } from 'react';
 
-import { defaultData, DEFAULT_SETTINGS, type AppData } from '@/core/types';
+import { defaultData, settingsFrom, type AppData } from '@/core/types';
 
 const FILE_NAME = 'quack-state.json';
 const TMP_NAME = 'quack-state.tmp';
@@ -21,7 +21,7 @@ function readFromDisk(): AppData {
     return {
       ...base,
       ...raw,
-      settings: { ...DEFAULT_SETTINGS, ...raw.settings, quiet: { ...DEFAULT_SETTINGS.quiet, ...raw.settings?.quiet } },
+      settings: settingsFrom(raw.settings),
       timer: { ...base.timer, ...raw.timer },
       days: raw.days ?? {},
       handled: raw.handled ?? [],

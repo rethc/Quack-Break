@@ -1,28 +1,16 @@
-// What the duck says. Puns are kept to about one line in five.
+// What the duck says. The duck talks in speech bubbles and celebrations;
+// notifications and the rest of the app stay plain.
 
-export const reminderTitles = [
-  'Quack! Eye break 🦆',
-  'Time to look away',
-  'Duck break!',
-  'Psst. Your eyes called.',
-  'Look up, friend 🦆',
-];
+export const reminderTitles = ['Eye break 🦆', 'Time to look away', 'Rest your eyes 🦆'];
 
 export const reminderBodies = (sec: number) => [
   `Look at something far away for ${sec} seconds.`,
-  `Find the farthest thing you can see. I'll count to ${sec}.`,
-  `Window time: ${sec} seconds of faraway views.`,
-  `Give your eyes ${sec} seconds of long-distance looking.`,
-  `Water you looking at? Something far away, I hope. ${sec} seconds!`,
+  `Find something far away. Look at it for ${sec} seconds.`,
 ];
 
-export const breakOverTitles = ['Quack quack! 🦆', 'Break done!', 'All done 🦆'];
+export const breakOverTitles = ['Break over 🦆', 'Break over'];
 
-export const breakOverBodies = [
-  'Eyes refreshed. Back to it!',
-  'Nice break. Your eyes say thanks.',
-  'That was eggs-cellent looking.',
-];
+export const breakOverBodies = ['Nice one. Back to it.', 'Eyes rested. Back to it.'];
 
 export const breakLines = [
   "Look out the window, I'll wait 🦆",

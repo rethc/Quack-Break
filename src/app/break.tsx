@@ -54,8 +54,8 @@ export default function BreakScreen() {
   useEffect(() => {
     if (phase !== 'done') return;
     completeBreakIfDone();
-    haptic.success();
-    AccessibilityInfo.announceForAccessibility('Break done. Quack quack!');
+    haptic.alert('end');
+    AccessibilityInfo.announceForAccessibility('Break over.');
   }, [phase]);
 
   const [entered, setEntered] = useState(false);
@@ -78,7 +78,7 @@ export default function BreakScreen() {
   return (
     <Screen contentStyle={styles.content}>
       <Text variant="title" center>
-        {phase === 'running' ? 'Eye break' : phase === 'done' ? 'Quack quack!' : 'Maybe next time'}
+        {phase === 'running' ? 'Eye break' : phase === 'done' ? 'Quack quack!' : 'Skipped'}
       </Text>
 
       <SpeechBubble text={lines[phase]} />
@@ -91,7 +91,7 @@ export default function BreakScreen() {
         <>
           <CountdownRing secondsLeft={secondsLeft} progress={progress} />
           <Button
-            title="Skip this one"
+            title="Skip"
             variant="ghost"
             onPress={() => {
               haptic.soft();

@@ -34,11 +34,26 @@ const labels: Record<DuckMode, string> = {
 /** How long the entrance takes, so screens can wait for it. */
 export const ENTER_MS = 1800;
 
+/** Full stride cycles during the walk-in (two footfalls each). */
+const STRIDES = 5;
+
+/**
+ * Where the walk-in is, from 0 (off screen) to 1 (arrived). Everything in the gait comes
+ * from this one value, so the feet always match the distance covered: when the duck
+ * slows down, so do its steps. `env` grows in at the start and fades the gait out at the end.
+ */
+function gait(w: number) {
+  'worklet';
+  return { phase: w * STRIDES * 2 * Math.PI, env: Math.max(0, Math.min(1, w * 10, (1 - w) * 5)) };
+}
+
 export function Duck({ mode, size = 180, label }: { mode: DuckMode; size?: number; label?: string }) {
   const reduceMotion = useReducedMotion();
   const { width: screenWidth } = useWindowDimensions();
 
-  const x = useSharedValue(mode === 'enter' && !reduceMotion ? -(screenWidth / 2 + size) : 0);
+  const startX = -(screenWidth / 2 + size);
+  const walk = useSharedValue(mode === 'enter' && !reduceMotion ? 0 : 1);
+  const x = useSharedValue(0);
   const y = useSharedValue(0);
   const tilt = useSharedValue(0);
   const wing = useSharedValue(0);
@@ -46,7 +61,7 @@ export function Duck({ mode, size = 180, label }: { mode: DuckMode; size?: numbe
   const footFront = useSharedValue(0);
   const footBack = useSharedValue(0);
 
-  const all = [x, y, tilt, wing, blink, footFront, footBack];
+  const all = [walk, x, y, tilt, wing, blink, footFront, footBack];
 
   useEffect(() => {
     all.forEach((v) => cancelAnimation(v));
@@ -64,6 +79,7 @@ export function Duck({ mode, size = 180, label }: { mode: DuckMode; size?: numbe
     };
 
     // Resting pose for each mode (also the whole story when Reduce Motion is on).
+    walk.value = 1;
     x.value = 0;
     y.value = 0;
     tilt.value = 0;
@@ -77,15 +93,11 @@ export function Duck({ mode, size = 180, label }: { mode: DuckMode; size?: numbe
 
     switch (mode) {
       case 'enter': {
-        const steps = 5;
-        const step = ENTER_MS / (steps * 2);
-        x.value = -(screenWidth / 2 + size);
-        x.value = withTiming(0, { duration: ENTER_MS, easing: Easing.out(Easing.quad) });
-        tilt.value = withSequence(withRepeat(withSequence(t(8, step), t(-8, step)), steps), t(0, 160));
-        y.value = withRepeat(withSequence(t(-6, step), t(0, step)), steps * 2);
-        footFront.value = withSequence(withRepeat(withSequence(t(20, step), t(-12, step)), steps), t(0, 120));
-        footBack.value = withSequence(withRepeat(withSequence(t(-12, step), t(20, step)), steps), t(0, 120));
-        wing.value = withSequence(withRepeat(withSequence(t(10, step * 2), t(0, step * 2)), steps / 2 + 1), t(0, 100));
+        // Steady walk that eases to a stop; the gait follows `walk` (see gait()).
+        walk.value = 0;
+        walk.value = withTiming(1, { duration: ENTER_MS, easing: Easing.out(Easing.sin) });
+        // Settle onto the water on arrival.
+        y.value = withDelay(ENTER_MS - 60, withSequence(t(size * 0.02, 140, Easing.out(Easing.quad)), t(0, 280)));
         after(ENTER_MS + 400, startIdle);
         break;
       }
@@ -143,12 +155,26 @@ export function Duck({ mode, size = 180, label }: { mode: DuckMode; size?: numbe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, reduceMotion]);
 
-  const bodyStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: x.value }, { translateY: y.value }, { rotate: `${tilt.value}deg` }],
-  }));
-  const wingStyle = useRotate(wing);
-  const footFrontStyle = useRotate(footFront);
-  const footBackStyle = useRotate(footBack);
+  const bob = size * 0.03;
+  const lift = size * 0.035;
+  const bodyStyle = useAnimatedStyle(() => {
+    const g = gait(walk.value);
+    return {
+      transform: [
+        { translateX: x.value + (1 - walk.value) * startX },
+        // Highest when the feet pass under the body, lowest when they're spread.
+        { translateY: y.value - Math.abs(Math.cos(g.phase)) * bob * g.env },
+        // A slight forward lean while walking, with a small waddle.
+        { rotate: `${tilt.value + (4 + Math.sin(g.phase) * 2) * g.env}deg` },
+      ],
+    };
+  });
+  const wingStyle = useAnimatedStyle(() => {
+    const g = gait(walk.value);
+    return { transform: [{ rotate: `${wing.value + Math.abs(Math.sin(g.phase)) * 6 * g.env}deg` }] };
+  });
+  const footFrontStyle = useFootStyle(footFront, walk, 0, lift);
+  const footBackStyle = useFootStyle(footBack, walk, Math.PI, lift);
   const eyeStyle = useAnimatedStyle(() => ({ transform: [{ scaleY: blink.value }] }));
 
   const eye = mode === 'flap' ? 'happy' : mode === 'sleep' ? 'closed' : 'open';
@@ -212,6 +238,17 @@ export function Duck({ mode, size = 180, label }: { mode: DuckMode; size?: numbe
   );
 }
 
-function useRotate(v: SharedValue<number>) {
-  return useAnimatedStyle(() => ({ transform: [{ rotate: `${v.value}deg` }] }));
+/** A foot swings from the hip and lifts a little while it moves forward. */
+function useFootStyle(angle: SharedValue<number>, walk: SharedValue<number>, offset: number, lift: number) {
+  return useAnimatedStyle(() => {
+    const g = gait(walk.value);
+    const p = g.phase + offset;
+    // Positive angles swing the foot back, so it moves forward while the angle falls (cos < 0).
+    return {
+      transform: [
+        { translateY: -Math.max(0, -Math.cos(p)) * lift * g.env },
+        { rotate: `${angle.value + Math.sin(p) * 20 * g.env}deg` },
+      ],
+    };
+  });
 }

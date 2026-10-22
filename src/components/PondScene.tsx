@@ -19,7 +19,7 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 const FIREFLIES = [
   { x: 60, y: 110, d: 0 },
-  { x: 300, y: 80, d: 700 },
+  { x: 270, y: 115, d: 700 },
   { x: 250, y: 150, d: 1500 },
   { x: 95, y: 60, d: 2200 },
   { x: 330, y: 135, d: 400 },
@@ -51,7 +51,9 @@ export function PondScene({ height = 240, children }: { height?: number; childre
   return (
     <View style={[styles.wrap, { height }]}>
       <View style={StyleSheet.absoluteFill} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
-        <Svg width="100%" height="100%" viewBox="0 0 360 240" preserveAspectRatio="xMidYMax slice">
+        {/* Sky is pinned to the top and the pond to the bottom, so wide screens crop
+            the middle instead of cutting off the moon. */}
+        <Svg style={StyleSheet.absoluteFill} viewBox="0 0 360 240" preserveAspectRatio="xMidYMin slice">
           {dark ? (
             <>
               <Circle cx={300} cy={36} r={18} fill={colors.moon} />
@@ -77,6 +79,8 @@ export function PondScene({ height = 240, children }: { height?: number; childre
               </G>
             </>
           )}
+        </Svg>
+        <Svg style={StyleSheet.absoluteFill} viewBox="0 0 360 240" preserveAspectRatio="xMidYMax slice">
           {/* pond */}
           <Ellipse cx={180} cy={196} rx={200} ry={46} fill={colors.pond} />
           <Ellipse cx={180} cy={200} rx={150} ry={30} fill={colors.pondDeep} opacity={0.5} />

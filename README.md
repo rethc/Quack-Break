@@ -67,8 +67,8 @@ src/core/           pure timer logic + tests (no React Native)
 src/services/       storage (one JSON file), notifications, background Snooze (Android), haptics
 src/components/     duck (SVG + Reanimated), pond scene, countdown ring, buttons, settings rows
 src/theme/          day/night colors (contrast-checked), fonts
-assets/             icons, Fredoka font (OFL), quack.wav, source SVGs
-scripts/            make-quack.mjs: regenerates the quack sound
+assets/             icons, Fredoka font (OFL), alert sounds and voices, source SVGs
+scripts/            make-quack.mjs, make-tones.mjs, make-voices.py: regenerate the sounds
 ```
 
 ## Scripts
@@ -80,8 +80,13 @@ scripts/            make-quack.mjs: regenerates the quack sound
 | `npm run typecheck` | TypeScript |
 | `npm run lint` | ESLint |
 | `npm run quack` | Rebuild `assets/sounds/quack.wav` |
+| `npm run tones` | Rebuild the chime, drop, bell and beep tones |
 | `npm run build:dev:android` / `build:dev:ios` | Development builds on EAS |
 
 ## Size notes
 
 Kept small on purpose: no audio, image, Lottie or Rive libraries; the duck is SVG; storage is a JSON file via `expo-file-system` (already part of Expo). Android release builds use R8 and resource shrinking. `expo-notifications` includes Firebase on Android even for local-only use; that's unavoidable with this library.
+
+## Sounds and voices
+
+The quack and the tones are synthesized by `scripts/make-quack.mjs` and `scripts/make-tones.mjs` (original, no samples). The voice clips ("Time to rest" / "Time to work") are AI-generated with [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) (Apache 2.0) by `scripts/make-voices.py`. Any new sound must also be added to the `expo-notifications` plugin's `sounds` list in `app.json`, and needs a new build.

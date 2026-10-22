@@ -5,7 +5,8 @@ import { describe, it } from 'node:test';
 import { planNotifications, MAX_REMINDERS } from './notificationPlan.ts';
 import { dayKey, HOUR, isQuiet, MINUTE, planBreaks } from './schedule.ts';
 import { breaksOn, finishBreakIfDone, finishOnboarding, skipBreak, snooze, startBreak } from './transitions.ts';
-import { DEFAULT_SETTINGS, defaultData, type Settings, type TimerState } from './types.ts';
+import { soundFile } from './sounds.ts';
+import { DEFAULT_SETTINGS, defaultData, settingsFrom, type Settings, type TimerState } from './types.ts';
 
 const at = (h: number, m = 0, day = 22) => new Date(2026, 9, day, h, m).getTime();
 const noQuiet: Settings = { ...DEFAULT_SETTINGS, quiet: { enabled: false, startMin: 0, endMin: 0 } };
@@ -139,7 +140,7 @@ describe('planNotifications', () => {
     const d = finishOnboarding(defaultData(at(9)), at(9));
     const a = planNotifications(d, at(10)).map((n) => n.id);
     assert.deepEqual(planNotifications(d, at(10, 1)).map((n) => n.id), a);
-    const louder = { ...d, settings: { ...d.settings, sound: false } };
+    const louder = { ...d, settings: { ...d.settings, startSound: 'chime' as const } };
     assert.notEqual(planNotifications(louder, at(10))[0]!.id, a[0]);
   });
 
@@ -151,6 +152,56 @@ describe('planNotifications', () => {
     const d = finishOnboarding(defaultData(at(9)), at(9));
     const s30 = { ...d, settings: { ...d.settings, breakSec: 30 } };
     assert.match(planNotifications(s30, at(10))[0]!.body, /30/);
+  });
+});
+
+describe('settingsFrom', () => {
+  it('uses the defaults for a fresh install', () => {
+    assert.deepEqual(settingsFrom(undefined), DEFAULT_SETTINGS);
+  });
+
+  it('turns the v0.1 sound and vibration switches into per-moment sounds', () => {
+    const quack = settingsFrom({ sound: true, haptics: true });
+    assert.equal(quack.startSound, 'quack');
+    assert.equal(quack.endVibrate, true);
+    const buzz = settingsFrom({ sound: false, haptics: true });
+    assert.equal(buzz.endSound, 'none');
+    assert.equal(buzz.endVibrate, true);
+    const silent = settingsFrom({ sound: false, haptics: false });
+    assert.equal(silent.startSound, 'none');
+    assert.equal(silent.startVibrate, false);
+    assert.equal('sound' in quack, false);
+  });
+
+  it('turns the v0.2 alert styles into sounds and vibration', () => {
+    const s = settingsFrom({ startAlert: 'vibrate', endAlert: 'silent' });
+    assert.deepEqual([s.startSound, s.startVibrate, s.endSound, s.endVibrate], ['none', true, 'none', false]);
+    assert.equal('startAlert' in s, false);
+  });
+
+  it('keeps custom timings with the 20-20-20 rule off', () => {
+    assert.equal(settingsFrom({ workMin: 20, breakSec: 20 }).rule202020, true);
+    const custom = settingsFrom({ workMin: 30, breakSec: 20 });
+    assert.equal(custom.rule202020, false);
+    assert.equal(custom.workMin, 30);
+  });
+});
+
+describe('soundFile', () => {
+  it('picks the file for each moment', () => {
+    const s = { ...DEFAULT_SETTINGS, startSound: 'chime' as const, endSound: 'none' as const };
+    assert.equal(soundFile('start', s), 'chime.wav');
+    assert.equal(soundFile('end', s), null);
+  });
+
+  it('has the voice say rest at the start and work at the end', () => {
+    const s = { ...DEFAULT_SETTINGS, startSound: 'voice' as const, endSound: 'voice' as const, voice: 'george' as const };
+    assert.equal(soundFile('start', s), 'voice_george_rest.wav');
+    assert.equal(soundFile('end', s), 'voice_george_work.wav');
+  });
+
+  it('uses the phone default sound for "phone"', () => {
+    assert.equal(soundFile('start', { ...DEFAULT_SETTINGS, startSound: 'phone' }), 'default');
   });
 });
 

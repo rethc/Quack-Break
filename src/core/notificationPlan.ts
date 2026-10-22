@@ -22,8 +22,13 @@ export type PlannedNotification = {
 /** iOS keeps at most 64 pending; leave room for the break-over and test notifications. */
 export const MAX_REMINDERS = 60;
 
+/** Bump when notification content changes shape, so booked notifications get replaced. */
+const CONTENT_VERSION = 3;
+
 export function contentFingerprint(s: Settings): string {
-  return hash(`${s.sound}|${s.haptics}|${s.breakSec}|${s.snoozeMin}`).toString(36);
+  return hash(
+    `${CONTENT_VERSION}|${s.startSound}|${s.startVibrate}|${s.endSound}|${s.endVibrate}|${s.voice}|${s.breakSec}|${s.snoozeMin}`,
+  ).toString(36);
 }
 
 export function planNotifications(data: AppData, now: number): PlannedNotification[] {

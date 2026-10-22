@@ -101,20 +101,20 @@ function HomeScreen() {
         {status === 'waiting' && (
           <>
             <Text variant="small" soft center>
-              Next eye break in
+              Next break in
             </Text>
             <Text variant="display" center>
               {formatCountdown(plan.dueAt - now)}
             </Text>
             <Text variant="small" soft center>
-              Reminder at {formatClock(plan.dueAt)}
+              at {formatClock(plan.dueAt)}
             </Text>
           </>
         )}
         {status === 'due' && (
           <>
             <Text variant="title" center>
-              Break time! 🦆
+              Break time
             </Text>
             <Text variant="body" soft center>
               Look at something far away for {settings.breakSec} seconds.
@@ -124,10 +124,10 @@ function HomeScreen() {
         {status === 'quiet' && (
           <>
             <Text variant="heading" center>
-              Quiet hours 💤
+              Quiet hours
             </Text>
             <Text variant="body" soft center>
-              {nextReminder ? `Next reminder at ${formatClock(nextReminder)}.` : 'Reminders are resting.'}
+              {nextReminder ? `Next reminder at ${formatClock(nextReminder)}` : 'Reminders paused'}
             </Text>
           </>
         )}
@@ -150,7 +150,7 @@ function HomeScreen() {
         {status === 'break' && <Button title="Back to my break" onPress={() => router.push('/break')} />}
         {status === 'due' && (
           <>
-            <Button title="Start break" icon="👀" onPress={start} />
+            <Button title="Start break" onPress={start} />
             <View style={styles.row}>
               <Button
                 title={`Snooze ${settings.snoozeMin} min`}
@@ -178,7 +178,7 @@ function HomeScreen() {
       </View>
 
       <Text variant="small" soft center>
-        {today === 0 ? 'No breaks yet today.' : `${today} ${today === 1 ? 'break' : 'breaks'} today 🐣`}
+        {today === 0 ? 'No breaks yet today' : `${today} ${today === 1 ? 'break' : 'breaks'} today`}
       </Text>
     </Screen>
   );
@@ -189,7 +189,7 @@ function statusLabel(status: Status, msLeft: number, nextReminder: number | unde
     case 'waiting':
       return `Next eye break in ${spokenCountdown(msLeft)}`;
     case 'due':
-      return 'Break time!';
+      return 'Break time';
     case 'quiet':
       return nextReminder
         ? `Quiet hours. Next reminder at ${formatClock(nextReminder)}`

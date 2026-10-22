@@ -1,19 +1,22 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { AppState, Linking, StyleSheet, View } from 'react-native';
+import { AppState, Linking, Platform, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { BackIcon, IconButton } from '@/components/Icons';
 import { Screen } from '@/components/Screen';
-import { Card, Stepper, ToggleRow } from '@/components/SettingRows';
+import { Card, ChoiceRow, Stepper, ToggleRow } from '@/components/SettingRows';
 import { Text } from '@/components/Text';
+import { ANDROID_ONLY_SOUNDS, SOUND_OPTIONS, soundFile, VOICE_OPTIONS, type Moment } from '@/core/sounds';
 import { updateSettings } from '@/core/transitions';
-import { BREAK_CHOICES, SNOOZE_CHOICES, WORK_CHOICES, type Settings } from '@/core/types';
+import { BREAK_CHOICES, RULE_BREAK_SEC, RULE_WORK_MIN, SNOOZE_CHOICES, WORK_CHOICES, type Settings } from '@/core/types';
 import { haptic } from '@/services/haptics';
 import {
   canNotify,
   hasExactAlarms,
   needsExactAlarmPermission,
+  openPhoneSoundPicker,
+  previewSound,
   requestExactAlarms,
   requestNotificationPermission,
   sendTestReminder,
@@ -24,6 +27,8 @@ import { useTheme } from '@/theme';
 import { formatMinuteOfDay } from '@/utils/format';
 
 const TIME_CHOICES = Array.from({ length: 48 }, (_, i) => i * 30);
+
+const SOUNDS = SOUND_OPTIONS.filter((o) => Platform.OS === 'android' || !ANDROID_ONLY_SOUNDS.includes(o.value));
 
 let syncTimer: ReturnType<typeof setTimeout> | undefined;
 function saveSettings(patch: Partial<Settings>) {
@@ -49,22 +54,34 @@ export default function SettingsScreen() {
       </View>
 
       <Card title="Timer">
-        <Stepper
-          label="Work time"
-          values={WORK_CHOICES}
-          value={s.workMin}
-          format={(v) => `${v} min`}
-          onChange={(v) => saveSettings({ workMin: v })}
+        <ToggleRow
+          label="20-20-20 rule"
+          hint="A 20-second break every 20 minutes. Turn off to set your own."
+          value={s.rule202020}
+          onChange={(v) =>
+            saveSettings(v ? { rule202020: true, workMin: RULE_WORK_MIN, breakSec: RULE_BREAK_SEC } : { rule202020: false })
+          }
         />
+        {!s.rule202020 && (
+          <>
+            <Stepper
+              label="Remind me every"
+              values={WORK_CHOICES}
+              value={s.workMin}
+              format={(v) => `${v} min`}
+              onChange={(v) => saveSettings({ workMin: v })}
+            />
+            <Stepper
+              label="Break length"
+              values={BREAK_CHOICES}
+              value={s.breakSec}
+              format={(v) => (v >= 60 ? `${v / 60} min` : `${v} s`)}
+              onChange={(v) => saveSettings({ breakSec: v })}
+            />
+          </>
+        )}
         <Stepper
-          label="Break time"
-          values={BREAK_CHOICES}
-          value={s.breakSec}
-          format={(v) => (v >= 60 ? `${v / 60} min` : `${v} s`)}
-          onChange={(v) => saveSettings({ breakSec: v })}
-        />
-        <Stepper
-          label="Snooze"
+          label="Snooze for"
           values={SNOOZE_CHOICES}
           value={s.snoozeMin}
           format={(v) => `${v} min`}
@@ -98,15 +115,28 @@ export default function SettingsScreen() {
         )}
       </Card>
 
-      <Card title="Sound and touch">
+      <Card title="Sound and vibration">
+        <MomentSound moment="start" label="Break reminder" s={s} />
+        <MomentSound moment="end" label="Break over" s={s} />
+        {(s.startSound === 'voice' || s.endSound === 'voice') && (
+          <>
+            <ChoiceRow
+              label="Voice"
+              value={s.voice}
+              options={VOICE_OPTIONS}
+              columns={4}
+              onChange={(v) => {
+                saveSettings({ voice: v });
+                void previewSound(`voice_${v}_rest.wav`);
+              }}
+            />
+          </>
+        )}
+        <Text variant="small" soft>
+          Tap a sound to hear it. Sounds follow your phone&apos;s volume and silent mode.
+        </Text>
         <ToggleRow
-          label="Quack sound"
-          hint="Follows your phone's silent switch and Focus"
-          value={s.sound}
-          onChange={(v) => saveSettings({ sound: v })}
-        />
-        <ToggleRow
-          label="Vibration"
+          label="Vibrate on taps"
           value={s.haptics}
           onChange={(v) => {
             saveSettings({ haptics: v });
@@ -130,11 +160,11 @@ export default function SettingsScreen() {
         )}
         {needsExactAlarmPermission && (
           <>
-            <PermissionRow ok={perms.exact} label="On-time reminders (Alarms & reminders)" />
+            <PermissionRow ok={perms.exact} label="On-time reminders" />
             {!perms.exact && (
               <>
                 <Text variant="small" soft>
-                  Without this, Android may deliver reminders late while your phone is idle.
+                  Without this, reminders can arrive late when your phone is idle.
                 </Text>
                 <Button title="Allow on-time reminders" variant="secondary" onPress={() => void requestExactAlarms()} />
               </>
@@ -142,7 +172,7 @@ export default function SettingsScreen() {
           </>
         )}
         <Button
-          title={testSent ? 'Test sent! Lock your phone 🦆' : 'Send a test reminder'}
+          title={testSent ? 'Sent. Lock your phone to see it.' : 'Send a test reminder'}
           variant="secondary"
           disabled={!perms.notifications}
           onPress={async () => {
@@ -152,7 +182,7 @@ export default function SettingsScreen() {
           }}
         />
         <Text variant="small" soft>
-          Arrives in about 10 seconds, with the Start break and Snooze buttons.
+          Arrives in 10 seconds.
         </Text>
       </Card>
 
@@ -160,6 +190,41 @@ export default function SettingsScreen() {
         Everything stays on this phone. No account, no tracking, no ads.
       </Text>
     </Screen>
+  );
+}
+
+/** Sound (and on Android, vibration) for one moment. Picking a sound plays it. */
+function MomentSound({ moment, label, s }: { moment: Moment; label: string; s: Settings }) {
+  const soundKey = moment === 'start' ? 'startSound' : 'endSound';
+  const vibrateKey = moment === 'start' ? 'startVibrate' : 'endVibrate';
+  return (
+    <>
+      <ChoiceRow
+        label={label}
+        value={s[soundKey]}
+        options={SOUNDS}
+        columns={4}
+        onChange={(v) => {
+          saveSettings({ [soundKey]: v });
+          void previewSound(soundFile(moment, { ...s, [soundKey]: v }));
+        }}
+      />
+      {Platform.OS === 'android' && s[soundKey] === 'phone' && (
+        <Button title="Choose phone sound" variant="secondary" onPress={() => void openPhoneSoundPicker(moment)} />
+      )}
+      {/* iPhone vibration follows the phone's own settings. */}
+      {Platform.OS === 'android' && (
+        <ToggleRow
+          label="Vibrate"
+          a11yLabel={`Vibrate for ${label.toLowerCase()}`}
+          value={s[vibrateKey]}
+          onChange={(v) => {
+            saveSettings({ [vibrateKey]: v });
+            if (v) haptic.preview();
+          }}
+        />
+      )}
+    </>
   );
 }
 

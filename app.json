@@ -7,7 +7,10 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "ios": {
       "bundleIdentifier": "com.chesd.quackbreak",
       "supportsTablet": false,
@@ -22,7 +25,9 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "permissions": ["android.permission.SCHEDULE_EXACT_ALARM"],
+      "permissions": [
+        "android.permission.SCHEDULE_EXACT_ALARM"
+      ],
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
@@ -37,7 +42,21 @@
         {
           "icon": "./assets/notification-icon.png",
           "color": "#F5B935",
-          "sounds": ["./assets/sounds/quack.wav"]
+          "sounds": [
+            "./assets/sounds/quack.wav",
+            "./assets/sounds/chime.wav",
+            "./assets/sounds/drop.wav",
+            "./assets/sounds/bell.wav",
+            "./assets/sounds/beep.wav",
+            "./assets/sounds/voice_heart_rest.wav",
+            "./assets/sounds/voice_heart_work.wav",
+            "./assets/sounds/voice_bella_rest.wav",
+            "./assets/sounds/voice_bella_work.wav",
+            "./assets/sounds/voice_michael_rest.wav",
+            "./assets/sounds/voice_michael_work.wav",
+            "./assets/sounds/voice_george_rest.wav",
+            "./assets/sounds/voice_george_work.wav"
+          ]
         }
       ],
       [
@@ -70,7 +89,19 @@
             "enableShrinkResourcesInReleaseBuilds": true
           }
         }
-      ]
-    ]
+      ],
+      "expo-status-bar"
+    ],
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "9aa40dd2-47ed-4e10-a241-6786febbff10"
+      }
+    },
+    "owner": "rethc"
   }
 }
