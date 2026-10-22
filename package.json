@@ -38,8 +38,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "quack": "node scripts/make-quack.mjs",
-    "build:dev:android": "eas build --profile development --platform android",
-    "build:dev:ios": "eas build --profile development --platform ios"
+    "build:dev:android": "npx eas-cli@latest build --profile development --platform android",
+    "build:dev:ios": "npx eas-cli@latest build --profile development --platform ios"
   },
   "private": true,
   "overrides": {
