@@ -70,12 +70,12 @@ export default function Welcome() {
 
   const bubble =
     step === 'hello'
-      ? "Hi! I'm your break duck."
+      ? "Hi! I'll remind you to rest your eyes."
       : step === 'exact'
-        ? 'One more thing, so I can be on time.'
+        ? 'One more step, so reminders arrive on time.'
         : allowed
-          ? 'All set! I quack, you look far away.'
-          : "No reminders for now. That's okay!";
+          ? "All set. I'll remind you when it's time."
+          : 'No reminders for now. You can turn them on later.';
 
   return (
     <Screen>
@@ -86,7 +86,7 @@ export default function Welcome() {
 
       {step === 'hello' && (
         <View style={styles.block}>
-          <Text variant="title">Rest your eyes, one quack at a time</Text>
+          <Text variant="title">Give your eyes regular breaks</Text>
           <Text variant="body">
             The 20-20-20 rule: every 20 minutes, look at something 20 feet (6 m) away for 20 seconds. I&apos;ll remind
             you.

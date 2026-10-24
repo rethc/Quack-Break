@@ -13,7 +13,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, Ellipse, G, Path } from 'react-native-svg';
 
+import type { ItemId } from '@/core/pond';
 import { useTheme } from '@/theme';
+
+import { PondItems } from './pond/art';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -51,6 +54,7 @@ export function PondScene({
   height = 240,
   sky = true,
   skyColor,
+  items = [],
   children,
 }: {
   height?: number;
@@ -58,6 +62,8 @@ export function PondScene({
   sky?: boolean;
   /** The colour behind the scene, so the moon's crescent cut-out matches it. */
   skyColor?: string;
+  /** Things the duck has found, drawn in the pond. */
+  items?: readonly ItemId[];
   children?: React.ReactNode;
 }) {
   const { colors, dark } = useTheme();
@@ -67,39 +73,46 @@ export function PondScene({
         {/* Sky is pinned to the top and the pond to the bottom, so wide screens crop
             the middle instead of cutting off the moon. */}
         {sky ? (
-        <Svg style={StyleSheet.absoluteFill} viewBox="0 0 360 240" preserveAspectRatio="xMidYMin slice">
-          {dark ? (
-            <>
-              <Circle cx={300} cy={36} r={18} fill={colors.moon} />
-              <Circle cx={307} cy={31} r={15} fill={skyColor ?? colors.bg} opacity={0.9} />
-              {[
-                [40, 30],
-                [120, 18],
-                [190, 42],
-                [250, 16],
-                [340, 70],
-                [20, 80],
-              ].map(([sx, sy]) => (
-                <Circle key={`${sx}-${sy}`} cx={sx} cy={sy} r={1.6} fill={colors.star} opacity={0.7} />
-              ))}
-            </>
-          ) : (
-            <>
-              <G opacity={0.9}>
-                <Ellipse cx={70} cy={42} rx={30} ry={12} fill="#FFFFFF" />
-                <Ellipse cx={92} cy={36} rx={20} ry={12} fill="#FFFFFF" />
-                <Ellipse cx={285} cy={62} rx={26} ry={10} fill="#FFFFFF" />
-                <Ellipse cx={302} cy={56} rx={16} ry={10} fill="#FFFFFF" />
-              </G>
-            </>
-          )}
-        </Svg>
+          <Svg style={StyleSheet.absoluteFill} viewBox="0 0 360 240" preserveAspectRatio="xMidYMin slice">
+            {dark ? (
+              <>
+                <Circle cx={300} cy={36} r={18} fill={colors.moon} />
+                <Circle cx={307} cy={31} r={15} fill={skyColor ?? colors.bg} opacity={0.9} />
+                {[
+                  [40, 30],
+                  [120, 18],
+                  [190, 42],
+                  [250, 16],
+                  [340, 70],
+                  [20, 80],
+                ].map(([sx, sy]) => (
+                  <Circle key={`${sx}-${sy}`} cx={sx} cy={sy} r={1.6} fill={colors.star} opacity={0.7} />
+                ))}
+              </>
+            ) : (
+              <>
+                <G opacity={0.9}>
+                  <Ellipse cx={70} cy={42} rx={30} ry={12} fill="#FFFFFF" />
+                  <Ellipse cx={92} cy={36} rx={20} ry={12} fill="#FFFFFF" />
+                  <Ellipse cx={285} cy={62} rx={26} ry={10} fill="#FFFFFF" />
+                  <Ellipse cx={302} cy={56} rx={16} ry={10} fill="#FFFFFF" />
+                </G>
+              </>
+            )}
+          </Svg>
         ) : null}
         <Svg style={StyleSheet.absoluteFill} viewBox="0 0 360 240" preserveAspectRatio="xMidYMax slice">
           {/* pond */}
           <Ellipse cx={180} cy={196} rx={200} ry={46} fill={colors.pond} />
           <Ellipse cx={180} cy={200} rx={150} ry={30} fill={colors.pondDeep} opacity={0.5} />
-          <Path d="M90 190 q14 -6 28 0 M230 206 q14 -6 28 0 M150 214 q10 -5 20 0" stroke={colors.pondLight} strokeWidth={3} strokeLinecap="round" fill="none" />
+          <Path
+            d="M90 190 q14 -6 28 0 M230 206 q14 -6 28 0 M150 214 q10 -5 20 0"
+            stroke={colors.pondLight}
+            strokeWidth={3}
+            strokeLinecap="round"
+            fill="none"
+          />
+          {items.length > 0 && <PondItems items={items} layer="water" />}
           {/* reeds */}
           <G stroke={colors.reed} strokeWidth={5} strokeLinecap="round">
             <Path d="M24 200 Q20 160 28 128" fill="none" />
@@ -112,6 +125,7 @@ export function PondScene({
           </G>
           {/* bank in front, where the duck stands */}
           <Path d="M-10 240 L-10 222 Q180 196 370 222 L370 240 Z" fill={colors.reed} opacity={dark ? 0.6 : 0.55} />
+          {items.length > 0 && <PondItems items={items} layer="bank" />}
           {dark ? FIREFLIES.map((f) => <Firefly key={f.x} x={f.x} y={f.y} delay={f.d} color={colors.firefly} />) : null}
         </Svg>
       </View>

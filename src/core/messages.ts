@@ -1,54 +1,60 @@
-// What the duck says. The duck talks in speech bubbles and celebrations;
-// notifications and the rest of the app stay plain.
+// What the duck says, and the notification text. Plain English everywhere: short, friendly,
+// no puns, no emoji. Every line fits the speech bubble on one or two lines (see copy tests).
 
 export const reminderTitles = ['Break time'];
 
-export const reminderBodies = (sec: number) => [`Look far away for ${sec} seconds.`];
+export const reminderBodies = (sec: number) => [`Look at something far away for ${sec} seconds.`];
 
 export const breakOverTitles = ['Break over'];
 
-export const breakOverBodies = ['Back to it.'];
+export const breakOverBodies = ['Time to get back to it.'];
 
+/** During a break. */
 export const breakLines = [
-  "Look out the window. I'll wait.",
-  'Find something about 20 feet away. A tree, a cloud, a far wall.',
-  'Let your eyes go soft and far.',
-  'Blink slowly, like a sleepy duck.',
-  'Somewhere out there is a pond. Look for it.',
-  "Far away things only. I've got the clock.",
+  "Look out the window. I'll keep time.",
+  'Find something about 20 feet (6 m) away.',
+  'Relax your eyes and look into the distance.',
+  'Blink slowly a few times.',
+  'Look at the farthest thing you can see.',
 ];
 
+/** When a break is done. */
 export const doneLines = [
-  'Quack! Eyes refreshed.',
-  "That's the stuff. Back to it!",
-  'Lovely looking. Your eyes say thanks.',
-  'Eggs-cellent break.',
-  'Happy flap! See you in a bit.',
+  'Well done. Your eyes had a rest.',
+  'Nice work. Back to it.',
+  'Good job. See you at the next break.',
+  'All done. Your eyes will thank you.',
 ];
 
+/** After skipping a break. */
 export const skipLines = [
-  'No worries. Next time! 🤷',
-  "Fair enough. I'll be around.",
-  "Skipping is fine. I'm a very chill duck.",
-  "All good. I'll paddle back later.",
+  "No problem. I'll remind you next time.",
+  "That's fine. See you at the next break.",
+  'Okay. Skipping now and then is fine.',
 ];
 
+/** Waiting for the next break. */
 export const waitingLines = [
-  "Paddling around until your next break.",
-  "I'll quack when it's time.",
-  'Keep going, I have the clock.',
-  'Just floating. Nothing to see here.',
+  "I'll remind you when it's time.",
+  "Keep going. I'm watching the clock.",
+  'Nothing to do right now.',
+  'Your next break is on its way.',
 ];
 
-export const dueLines = [
-  'Break time! Got a few seconds?',
-  'Psst. Eyes up, look far away?',
-  'Ready when you are!',
-];
+/** A break is due. */
+export const dueLines = ['Time to rest your eyes.', 'Look up and find something far away.', 'Ready when you are.'];
 
-export const pausedLines = ['Taking a breather. I’ll be here.', 'Reminders are off. Resume any time.'];
+/** Reminders stopped. */
+export const pausedLines = ["I'll wait here until you resume.", 'No reminders until you turn them back on.'];
 
-export const quietLines = ['Quiet hours. The duck is napping 💤', 'Shh. Duck asleep until morning 💤'];
+/** Quiet hours. */
+export const quietLines = ["It's quiet hours. I'll remind you when they end.", 'No reminders until quiet hours end.'];
+
+/** During a running break, on Home. */
+export const breakRunningLines = ['Your break is still going.'];
+
+/** After snoozing. */
+export const snoozeLine = (min: number) => `Okay. I'll remind you in ${min} minutes.`;
 
 /** Stable pick: the same seed always gives the same line. */
 export function pick<T>(list: readonly T[], seed: number | string): T {
@@ -58,10 +64,9 @@ export function pick<T>(list: readonly T[], seed: number | string): T {
 
 /** Random pick that avoids repeating `avoid`. */
 export function pickFresh<T>(list: readonly T[], avoid?: T): T {
-  if (list.length < 2) return list[0] as T;
-  let item = list[Math.floor(Math.random() * list.length)] as T;
-  while (item === avoid) item = list[Math.floor(Math.random() * list.length)] as T;
-  return item;
+  const choices = list.filter((item) => item !== avoid);
+  if (choices.length === 0) return list[0] as T;
+  return choices[Math.floor(Math.random() * choices.length)] as T;
 }
 
 /** FNV-1a, 32-bit. */

@@ -36,6 +36,8 @@
   "scripts": {
     "start": "expo start",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"src/core/*.test.ts\"",
+    "test:services": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./test/setup.mjs --test \"test/**/*.test.ts\"",
+    "test:all": "npm test && npm run test:services",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "quack": "node scripts/make-quack.mjs",

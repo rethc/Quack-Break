@@ -1,4 +1,5 @@
 // State changes for the break cycle. Pure: (data, now) -> new data.
+import { countBreak, markSeen, rename, wear, type ItemId } from './pond.ts';
 import { dayKey, MINUTE } from './schedule.ts';
 import type { AppData, Settings } from './types.ts';
 
@@ -19,7 +20,10 @@ export function startBreak(data: AppData, now: number): AppData {
   };
 }
 
-/** Counts a break whose time is up. Returns the same object if there was nothing to finish. */
+/**
+ * Counts a break whose time is up, for today and toward the pond. Returns the same object if
+ * there was nothing to finish.
+ */
 export function finishBreakIfDone(data: AppData, now: number): AppData {
   const endsAt = data.timer.breakEndsAt;
   if (endsAt === null || endsAt > now) return data;
@@ -29,7 +33,7 @@ export function finishBreakIfDone(data: AppData, now: number): AppData {
   if (keys.length > KEEP_DAYS) {
     for (const k of keys.sort().slice(0, keys.length - KEEP_DAYS)) delete days[k];
   }
-  return { ...data, days, timer: { ...data.timer, breakEndsAt: null } };
+  return { ...data, days, pond: countBreak(data.pond, endsAt), timer: { ...data.timer, breakEndsAt: null } };
 }
 
 /** Skip the due or running break. No guilt: nothing is recorded. */
@@ -54,14 +58,16 @@ export function stopReminders(data: AppData, now: number): AppData {
   return { ...d, timer: { anchor: now, setAt: now, breakEndsAt: null, paused: true } };
 }
 
-/** Start reminders again, counting from now. */
+/** Start reminders again, counting from now (or from the end of a break that's still running). */
 export function resumeReminders(data: AppData, now: number): AppData {
   const d = finishBreakIfDone(data, now);
-  return { ...d, timer: { anchor: now, setAt: now, breakEndsAt: null } };
+  const running = d.timer.breakEndsAt;
+  return { ...d, timer: { anchor: running ?? now, setAt: now, breakEndsAt: running } };
 }
 
 export function finishOnboarding(data: AppData, now: number): AppData {
-  return { ...data, onboarded: true, timer: { anchor: now, setAt: now, breakEndsAt: null } };
+  const d = finishBreakIfDone(data, now);
+  return { ...d, onboarded: true, timer: { anchor: now, setAt: now, breakEndsAt: null } };
 }
 
 /**
@@ -69,15 +75,33 @@ export function finishOnboarding(data: AppData, now: number): AppData {
  * break overdue at once, with no reminder ever sent.
  */
 export function updateSettings(data: AppData, patch: Partial<Settings>, now: number): AppData {
-  const settings = { ...data.settings, ...patch };
-  if (settings.workMin === data.settings.workMin) return { ...data, settings };
-  const t = data.timer;
+  const d = finishBreakIfDone(data, now);
+  const settings = { ...d.settings, ...patch };
+  if (settings.workMin === d.settings.workMin) return { ...d, settings };
+  const t = d.timer;
   const from = Math.max(now, t.breakEndsAt ?? 0);
   return {
-    ...data,
+    ...d,
     settings,
     timer: { anchor: from, setAt: now, breakEndsAt: t.breakEndsAt, ...(t.paused && { paused: true }) },
   };
+}
+
+/** Put on (or take off, if already worn) a hat or scarf. Locked or non-wearable items are ignored. */
+export function wearItem(data: AppData, id: ItemId | null): AppData {
+  const pond = wear(data.pond, id);
+  return pond === data.pond ? data : { ...data, pond };
+}
+
+export function renameDuck(data: AppData, name: string): AppData {
+  const pond = rename(data.pond, name);
+  return pond === data.pond ? data : { ...data, pond };
+}
+
+/** The user looked at their pond: nothing is new any more. */
+export function markPondSeen(data: AppData): AppData {
+  const pond = markSeen(data.pond);
+  return pond === data.pond ? data : { ...data, pond };
 }
 
 export function rememberHandled(data: AppData, key: string): AppData {

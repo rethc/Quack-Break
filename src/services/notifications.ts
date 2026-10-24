@@ -95,14 +95,22 @@ const channelIdFor = (m: Moment) => {
 // Android channels can't change sound/vibration after creation,
 // so each moment + sound + vibration gets its own channel id and unused ones are deleted.
 let readyChannels: string | null = null;
+/** The channels last left as the only ones, until channels are created again. */
 let prunedChannels: string | null = null;
+
+const currentChannelIds = (): Record<Moment, string> => ({ start: channelIdFor('start'), end: channelIdFor('end') });
+const keyOf = (ids: Record<Moment, string>) => `${ids.start}|${ids.end}`;
 
 /** Make sure both moments' channels exist for the current settings. */
 export async function ensureChannels(): Promise<Record<Moment, string> | undefined> {
   if (Platform.OS !== 'android') return undefined;
-  const ids: Record<Moment, string> = { start: channelIdFor('start'), end: channelIdFor('end') };
-  const key = `${ids.start}|${ids.end}`;
-  if (readyChannels !== key) await createChannels(ids);
+  const ids = currentChannelIds();
+  const key = keyOf(ids);
+  if (readyChannels !== key) {
+    await createChannels(ids);
+    // A preview or the settings page can make channels between syncs: the next sync tidies up.
+    prunedChannels = null;
+  }
   readyChannels = key;
   return ids;
 }
@@ -114,16 +122,17 @@ export async function ensureChannels(): Promise<Record<Moment, string> | undefin
  */
 async function pruneChannels(ids: Record<Moment, string> | undefined) {
   if (!ids) return;
-  const key = `${ids.start}|${ids.end}`;
+  const key = keyOf(ids);
   if (prunedChannels === key) return;
-  const keep = new Set(Object.values(ids));
   const channels = await Notifications.getNotificationChannelsAsync();
-  await Promise.allSettled(
-    channels
-      .filter((c) => ownsChannel(c.id) && !keep.has(c.id))
-      .map((c) => Notifications.deleteNotificationChannelAsync(c.id)),
-  );
-  prunedChannels = key;
+  // Keep the ones just booked on, and the ones the settings use now: a sound picked (and
+  // previewed) while this sync was booking already has its channel, for the next sync.
+  const now = currentChannelIds();
+  const keep = new Set([...Object.values(ids), ...Object.values(now)]);
+  const gone = channels.filter((c) => ownsChannel(c.id) && !keep.has(c.id)).map((c) => c.id);
+  await Promise.allSettled(gone.map((id) => Notifications.deleteNotificationChannelAsync(id)));
+  if (readyChannels?.split('|').some((id) => gone.includes(id))) readyChannels = null;
+  if (keyOf(now) === key) prunedChannels = key;
 }
 
 /** Android: break reminders were turned off for this app in the phone's notification settings. */

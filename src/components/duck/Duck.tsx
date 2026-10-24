@@ -18,18 +18,24 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, Ellipse, Path } from 'react-native-svg';
 
+import type { ItemId, StageId } from '@/core/pond';
+
 import { duckColors as C, duckPaths as D, pivots } from './shapes';
 
 export type DuckMode = 'enter' | 'idle' | 'attention' | 'flap' | 'shrug' | 'sleep';
 
-const labels: Record<DuckMode, string> = {
-  enter: 'A little yellow duck waddles in',
-  idle: 'A little yellow duck, floating',
-  attention: 'The duck is hopping. Break time',
-  flap: 'The duck flaps its wings and quacks happily',
-  shrug: 'The duck shrugs',
-  sleep: 'The duck is asleep',
+/** What the duck is doing, after its description ("Pip, a young duck, ..."). */
+const actions: Record<DuckMode, string> = {
+  enter: 'walks in',
+  idle: 'is floating on the pond',
+  attention: 'is hopping: break time',
+  flap: 'flaps its wings happily',
+  shrug: 'shrugs',
+  sleep: 'is asleep',
 };
+
+/** Which growth features each stage has. Later stages keep the earlier ones' features. */
+const STAGE_RANK: Record<StageId, number> = { duckling: 0, fluffy: 1, young: 2, grown: 3, legend: 4 };
 
 /** How long the entrance takes, so screens can wait for it. */
 export const ENTER_MS = 1800;
@@ -47,7 +53,20 @@ function gait(w: number) {
   return { phase: w * STRIDES * 2 * Math.PI, env: Math.max(0, Math.min(1, w * 10, (1 - w) * 5)) };
 }
 
-export function Duck({ mode, size = 180, label }: { mode: DuckMode; size?: number; label?: string }) {
+export function Duck({
+  mode,
+  size = 180,
+  who,
+  stage = 'duckling',
+  wearing = null,
+}: {
+  mode: DuckMode;
+  size?: number;
+  /** For screen readers, e.g. "Pip, a young duck". */
+  who?: string;
+  stage?: StageId;
+  wearing?: ItemId | null;
+}) {
   const reduceMotion = useReducedMotion();
   const { width: screenWidth } = useWindowDimensions();
 
@@ -185,11 +204,14 @@ export function Duck({ mode, size = 180, label }: { mode: DuckMode; size?: numbe
     </Svg>
   );
 
+  const rank = STAGE_RANK[stage];
+  const onHead = wearing === 'beanie' || wearing === 'bow' ? wearing : null;
+
   return (
     <View
       accessible
       accessibilityRole="image"
-      accessibilityLabel={label ?? labels[mode]}
+      accessibilityLabel={who ? `${who}, ${actions[mode]}` : `The duck ${actions[mode]}`}
       style={box}
     >
       <Animated.View style={[box, { transformOrigin: pivots.body }, bodyStyle]}>
@@ -202,13 +224,45 @@ export function Duck({ mode, size = 180, label }: { mode: DuckMode; size?: numbe
         <View style={StyleSheet.absoluteFill}>
           {layer(
             <>
+              {/* Young and older: tail feathers (grown: two). */}
+              {rank >= 2 && <Path d={D.tail} fill={C.shade} />}
+              {rank >= 3 && <Path d={D.tail2} fill={C.wing} />}
               <Path d={D.body} fill={C.body} />
               <Path d={D.belly} fill={C.shade} opacity={0.55} />
               <Circle cx={129} cy={62} r={35} fill={C.body} />
-              <Path d={D.tuft} fill={C.body} />
+              {/* A hat on the head replaces the tuft and the crown. */}
+              {!onHead && rank === 4 && (
+                <Path d={D.crown} fill={C.shade} stroke={C.beakLine} strokeWidth={2} strokeLinejoin="round" />
+              )}
+              {!onHead && rank < 4 && <Path d={D.tuft} fill={C.body} />}
+              {!onHead && rank === 1 && (
+                <>
+                  <Path d={D.tuft} fill={C.body} transform="rotate(-32 127 30)" />
+                  <Path d={D.tuft} fill={C.body} transform="rotate(30 127 30)" />
+                </>
+              )}
               <Path d={D.beak} fill={C.beak} />
               <Path d={D.beakLine} fill="none" stroke={C.beakLine} strokeWidth={2.5} strokeLinecap="round" />
               <Ellipse cx={132} cy={75} rx={7.5} ry={4.5} fill={C.cheek} opacity={0.5} />
+              {onHead === 'beanie' && (
+                <>
+                  <Path d={D.beanie} fill={C.beanie} />
+                  <Path d={D.beanieBand} fill={C.beanieBand} />
+                  <Circle cx={130} cy={10} r={6} fill="#FFFFFF" stroke={C.beanieBand} strokeWidth={2} />
+                </>
+              )}
+              {onHead === 'bow' && (
+                <>
+                  <Path d={D.bow} fill={C.bow} />
+                  <Circle cx={116} cy={30} r={5} fill={C.bowKnot} />
+                </>
+              )}
+              {wearing === 'scarf' && (
+                <>
+                  <Path d={D.scarf} fill={C.scarf} />
+                  <Path d={D.scarfEnd} fill={C.scarf} />
+                </>
+              )}
             </>,
           )}
         </View>
@@ -231,7 +285,13 @@ export function Duck({ mode, size = 180, label }: { mode: DuckMode; size?: numbe
           )}
         </Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, { transformOrigin: pivots.wing }, wingStyle]}>
-          {layer(<Path d={D.wing} fill={C.wing} />)}
+          {layer(
+            <>
+              <Path d={D.wing} fill={C.wing} />
+              {/* Grown and older: bright wing tips. */}
+              {rank >= 3 && <Path d={D.wingTip} fill="#FFFFFF" opacity={0.6} />}
+            </>,
+          )}
         </Animated.View>
       </Animated.View>
     </View>

@@ -11,6 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 
+import type { ItemId } from '@/core/pond';
 import { useTheme } from '@/theme';
 
 import { PondScene } from './PondScene';
@@ -22,10 +23,13 @@ const STROKE = 8;
 export function Porthole({
   progress,
   size = 300,
+  items,
   children,
 }: {
   progress: number | null;
   size?: number;
+  /** Things the duck has found, shown in the pond. */
+  items?: readonly ItemId[];
   children?: React.ReactNode;
 }) {
   const { colors } = useTheme();
@@ -70,7 +74,7 @@ export function Porthole({
           { width: inner, height: inner, borderRadius: inner / 2, backgroundColor: colors.heroSky },
         ]}
       >
-        <PondScene height={inner} skyColor={colors.heroSky}>
+        <PondScene height={inner} skyColor={colors.heroSky} items={items}>
           {children}
         </PondScene>
       </View>

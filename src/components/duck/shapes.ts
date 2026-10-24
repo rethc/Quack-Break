@@ -9,6 +9,11 @@ export const duckColors = {
   footBack: '#F08B2E',
   eye: '#33294A',
   cheek: '#FF8FA3',
+  beanie: '#7FC6E4',
+  beanieBand: '#2F6E8C',
+  bow: '#FF8FA3',
+  bowKnot: '#E5677F',
+  scarf: '#E5677F',
 };
 
 export const duckPaths = {
@@ -24,6 +29,17 @@ export const duckPaths = {
   wing: 'M118 108 C122 126 110 142 88 144 C72 145 58 138 52 128 C64 132 74 130 80 126 C70 126 62 120 60 114 C74 116 84 112 90 106 C100 100 114 100 118 108 Z',
   eyeHappy: 'M133 57 Q140 48 147 57',
   eyeClosed: 'M133 54 Q140 62 147 54',
+  // Growth: tail feathers (young, grown), wing tips (grown), crown (pond legend).
+  tail: 'M36 80 C26 70 22 58 26 48 C31 58 38 66 46 72 Z',
+  tail2: 'M42 84 C36 76 36 66 40 60 C42 68 46 74 52 78 Z',
+  wingTip: 'M60 114 C74 116 84 112 90 106 C86 115 74 121 60 114 Z',
+  crown: 'M112 34 L115 17 L123 27 L129 12 L135 27 L143 17 L146 34 Z',
+  // Things to wear. The beanie's band stays above the eye.
+  beanie: 'M100 42 C101 20 116 12 130 12 C145 12 159 20 160 42 Z',
+  beanieBand: 'M102 36 L158 36 Q163 36 163 41 Q163 46 158 46 L102 46 Q97 46 97 41 Q97 36 102 36 Z',
+  bow: 'M116 30 L100 21 L100 39 Z M116 30 L132 21 L132 39 Z',
+  scarf: 'M100 86 Q130 100 160 84 L162 94 Q130 112 98 96 Z',
+  scarfEnd: 'M108 96 L102 122 L113 123 L118 99 Z',
 };
 
 // Pivot points as percentages of the box, for CSS-style transformOrigin.

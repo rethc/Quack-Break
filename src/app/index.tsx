@@ -6,11 +6,22 @@ import { Button } from '@/components/Button';
 import { Duck, ENTER_MS, type DuckMode } from '@/components/duck/Duck';
 import { GearIcon, IconButton } from '@/components/Icons';
 import { DuckBubble } from '@/components/DuckBubble';
+import { PondProgress, STAGE_SCALE } from '@/components/pond/PondProgress';
 import { PondScene } from '@/components/PondScene';
 import { Screen } from '@/components/Screen';
 import { SkyClock } from '@/components/SkyClock';
 import { Text } from '@/components/Text';
-import { dueLines, pausedLines, pickFresh, quietLines, skipLines, waitingLines } from '@/core/messages';
+import {
+  breakRunningLines,
+  dueLines,
+  pausedLines,
+  pickFresh,
+  quietLines,
+  skipLines,
+  snoozeLine,
+  waitingLines,
+} from '@/core/messages';
+import { describeDuck, stageFor, unlockedItems } from '@/core/pond';
 import { dayKey, MINUTE, nextQuietEnd, planBreaks } from '@/core/schedule';
 import { useNow } from '@/hooks/useNow';
 import { turnOnNotifications, usePermissions } from '@/hooks/usePermissions';
@@ -29,7 +40,8 @@ const POND_H = 230;
 const SUN_TOP = 34;
 const STATUS_TOP = SUN_TOP + 30;
 const BUBBLE_H = 74; // two lines
-const DUCK_CLEAR = 150; // the duck's head, measured from the panel's bottom
+/** The duck at its full size (a pond legend); younger ducks are smaller. */
+const DUCK_FULL = 156;
 const MIN_SKY = 340;
 
 export default function Home() {
@@ -43,6 +55,18 @@ function HomeScreen() {
   const settings = useData((d) => d.settings);
   const timer = useData((d) => d.timer);
   const days = useData((d) => d.days);
+  const pond = useData((d) => d.pond);
+  const stage = stageFor(pond.total);
+  const duckSize = Math.round(DUCK_FULL * STAGE_SCALE[stage.id]);
+  // The bubble sits just above the duck's head, measured from the panel's bottom.
+  const duckClear = duckSize + 6;
+  const pondItems = useMemo(
+    () =>
+      unlockedItems(pond.total)
+        .filter((i) => i.kind === 'pond')
+        .map((i) => i.id),
+    [pond.total],
+  );
 
   const now = useNow((t) => {
     const p = planBreaks(t, settings, timer, { max: 1 });
@@ -88,7 +112,7 @@ function HomeScreen() {
       waiting: waitingLines,
       due: dueLines,
       quiet: quietLines,
-      break: ['Your break is still going!'],
+      break: breakRunningLines,
       paused: pausedLines,
     };
     return pickFresh(lists[status]);
@@ -123,17 +147,18 @@ function HomeScreen() {
   const [area, setArea] = useState({ w: 0, h: 0 });
   const { fontScale } = useWindowDimensions();
   const statusH = Math.ceil(48 * fontScale + 78 * Math.min(fontScale, 1.6) + 6);
-  const fit = STATUS_TOP + statusH + 12 + BUBBLE_H + DUCK_CLEAR;
+  const fit = STATUS_TOP + statusH + 12 + BUBBLE_H + duckClear;
   const [footH, setFootH] = useState(0);
   // Never shorter than the countdown and the duck need (large text on a small phone scrolls).
   const skyH = Math.max(MIN_SKY, fit - BUBBLE_H, Math.min(fit, area.h - footH - space.m));
   // On a short screen the bubble goes first, to leave the countdown room.
   const showBubble = skyH >= fit - 1;
-  const statusHeight = Math.max(0, skyH - DUCK_CLEAR - (showBubble ? BUBBLE_H : 0) - 12 - STATUS_TOP);
+  const statusHeight = Math.max(0, skyH - duckClear - (showBubble ? BUBBLE_H : 0) - 12 - STATUS_TOP);
   // The arc's ends sit above the reed tops, so the sun or moon is never half hidden.
   const arcBase = skyH - POND_H * 0.4 - 70;
   // The bubble ends short of the arc's right leg and grows left; its tail points at the duck's head.
-  const BUBBLE_RIGHT = 48;
+  // Far enough in that the sun or moon, resting at the end of its arc, never touches it.
+  const BUBBLE_RIGHT = 60;
   const bubbleTail = area.w / 2 - BUBBLE_RIGHT - 28;
 
   const start = () => {
@@ -223,8 +248,8 @@ function HomeScreen() {
           </View>
 
           <View style={styles.pond}>
-            <PondScene height={POND_H} sky={false}>
-              <Duck mode={duckMode} size={150} />
+            <PondScene height={POND_H} sky={false} items={pondItems}>
+              <Duck mode={duckMode} size={duckSize} stage={stage.id} wearing={pond.wearing} who={describeDuck(pond)} />
             </PondScene>
           </View>
 
@@ -232,7 +257,7 @@ function HomeScreen() {
             <DuckBubble
               text={reaction?.line ?? line}
               tailFromRight={bubbleTail}
-              style={{ ...styles.bubble, right: BUBBLE_RIGHT, maxWidth: area.w - BUBBLE_RIGHT - 24 }}
+              style={{ ...styles.bubble, bottom: duckClear, right: BUBBLE_RIGHT, maxWidth: area.w - BUBBLE_RIGHT - 24 }}
             />
           )}
         </View>
@@ -266,7 +291,7 @@ function HomeScreen() {
                       haptic.soft();
                       snoozeNow();
                       setReaction({
-                        line: `Okay, ${settings.snoozeMin} more minutes.`,
+                        line: snoozeLine(settings.snoozeMin),
                       });
                     }}
                   />
@@ -285,9 +310,7 @@ function HomeScreen() {
             )}
           </View>
 
-          <Text variant="small" soft center>
-            {today === 0 ? 'No breaks yet today' : `${today} ${today === 1 ? 'break' : 'breaks'} today`}
-          </Text>
+          <PondProgress pond={pond} today={today} />
         </View>
       </View>
     </Screen>
@@ -400,7 +423,7 @@ const styles = StyleSheet.create({
   // Wider than the countdown, so a little smaller to stay inside the arc.
   dueTitle: { fontSize: 46, lineHeight: 54 },
   pond: { position: 'absolute', left: 0, right: 0, bottom: 0 },
-  bubble: { position: 'absolute', bottom: DUCK_CLEAR },
+  bubble: { position: 'absolute' },
   actions: { gap: 12 },
   row: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
 });

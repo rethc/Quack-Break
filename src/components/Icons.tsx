@@ -22,7 +22,14 @@ export function GearIcon({ color, size = 26 }: { color: string; size?: number })
 export function BackIcon({ color, size = 26 }: { color: string; size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path d="M15 5l-7 7 7 7" fill="none" stroke={color} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
+      <Path
+        d="M15 5l-7 7 7 7"
+        fill="none"
+        stroke={color}
+        strokeWidth={2.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </Svg>
   );
 }
@@ -30,7 +37,29 @@ export function BackIcon({ color, size = 26 }: { color: string; size?: number })
 export function ChevronIcon({ color, size = 22 }: { color: string; size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path d="M9 5l7 7-7 7" fill="none" stroke={color} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
+      <Path
+        d="M9 5l7 7-7 7"
+        fill="none"
+        stroke={color}
+        strokeWidth={2.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+export function LockIcon({ color, size = 16 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M7 11h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2zM8 11V7a4 4 0 0 1 8 0v4"
+        fill="none"
+        stroke={color}
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </Svg>
   );
 }

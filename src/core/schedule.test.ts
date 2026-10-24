@@ -14,6 +14,7 @@ import {
   startBreak,
   stopReminders,
   updateSettings,
+  wearItem,
 } from './transitions.ts';
 import { soundFile } from './sounds.ts';
 import { DEFAULT_SETTINGS, defaultData, settingsFrom, timerFrom, type Settings, type TimerState } from './types.ts';
@@ -307,11 +308,11 @@ describe('damaged or old saved data', () => {
 
   it('resets times left in the future by a clock that went back', () => {
     const now = at(10);
-    const t = timerFrom({ anchor: now + 24 * HOUR, setAt: now + 24 * HOUR, breakEndsAt: now + 24 * HOUR }, DEFAULT_SETTINGS, now);
+    const t = timerFrom({ anchor: now + 24 * HOUR, setAt: now + 24 * HOUR, breakEndsAt: now + 24 * HOUR }, now);
     assert.deepEqual(t, { anchor: now, setAt: now, breakEndsAt: null });
-    const running = timerFrom({ anchor: now + 10_000, setAt: now - 10_000, breakEndsAt: now + 10_000 }, DEFAULT_SETTINGS, now);
+    const running = timerFrom({ anchor: now + 10_000, setAt: now - 10_000, breakEndsAt: now + 10_000 }, now);
     assert.equal(running.breakEndsAt, now + 10_000);
-    assert.deepEqual(timerFrom('junk', DEFAULT_SETTINGS, now), { anchor: now, setAt: now, breakEndsAt: null });
+    assert.deepEqual(timerFrom('junk', now), { anchor: now, setAt: now, breakEndsAt: null });
   });
 });
 
@@ -338,5 +339,24 @@ describe('running out of booked reminders', () => {
   it('plans no last call while reminders are stopped', () => {
     const d = stopReminders(finishOnboarding(defaultData(at(9)), at(9)), at(10));
     assert.deepEqual(planNotifications(d, at(10)), []);
+  });
+});
+
+describe('fixes found by the test suite', () => {
+  const ready = { ...finishOnboarding(defaultData(at(9)), at(9)), settings: noQuiet };
+
+  it('resuming during a break taken by hand keeps the break and counts from its end', () => {
+    const stopped = stopReminders(ready, at(10));
+    const inBreak = startBreak(stopped, at(10, 5));
+    const resumed = resumeReminders(inBreak, at(10, 5) + 5_000);
+    assert.equal(resumed.timer.paused, undefined);
+    assert.equal(resumed.timer.breakEndsAt, inBreak.timer.breakEndsAt);
+    const p = planBreaks(at(10, 6), resumed.settings, resumed.timer, { max: 1 });
+    assert.equal(p.reminders[0], inBreak.timer.breakEndsAt! + 20 * 60_000);
+  });
+
+  it('ignores an unknown item to wear', () => {
+    const d = { ...ready, pond: { ...ready.pond, total: 500 } };
+    assert.equal(wearItem(d, 'crown' as never), d);
   });
 });

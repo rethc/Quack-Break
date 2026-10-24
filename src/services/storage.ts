@@ -3,6 +3,7 @@
 import { File, Paths } from 'expo-file-system';
 import { useSyncExternalStore } from 'react';
 
+import { pondFrom } from '@/core/pond';
 import { defaultData, settingsFrom, timerFrom, type AppData } from '@/core/types';
 
 const FILE_NAME = 'quack-state.json';
@@ -16,7 +17,7 @@ const listeners = new Set<() => void>();
 /** Parses and checks a saved state file. Throws if it's missing or unreadable. */
 function parse(file: File, now: number): AppData {
   const raw = JSON.parse(file.textSync()) as Partial<AppData> | null;
-  if (!raw || typeof raw !== 'object') throw new Error('Saved state is not an object');
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Saved state is not an object');
   const settings = settingsFrom(raw.settings);
   const days: Record<string, number> = {};
   if (raw.days && typeof raw.days === 'object') {
@@ -28,9 +29,10 @@ function parse(file: File, now: number): AppData {
     v: 1,
     onboarded: raw.onboarded === true,
     settings,
-    timer: timerFrom(raw.timer, settings, now),
+    timer: timerFrom(raw.timer, now),
     days,
     handled: Array.isArray(raw.handled) ? raw.handled.filter((h) => typeof h === 'string').slice(-30) : [],
+    pond: pondFrom(raw.pond, days),
   };
 }
 

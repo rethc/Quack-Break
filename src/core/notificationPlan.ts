@@ -31,8 +31,11 @@ export const MAX_REMINDERS_ANDROID = 150;
 export const OUT_TITLE = 'Break reminders paused';
 export const OUT_BODY = 'Open Quack Break to keep them coming.';
 
-/** Bump when notification content changes shape, so booked notifications get replaced. */
-const CONTENT_VERSION = 5;
+/**
+ * Bump when notification content changes (its wording too), so booked notifications get
+ * replaced. Android rebooks everything at each start anyway; iOS keeps what's booked.
+ */
+const CONTENT_VERSION = 6;
 
 export function contentFingerprint(s: Settings): string {
   return hash(

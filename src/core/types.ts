@@ -1,4 +1,6 @@
 // Shared data shapes. Plain TypeScript so it runs in Node tests too.
+import { defaultPond, type PondState } from './pond.ts';
+import { MINUTE } from './schedule.ts';
 
 export type QuietHours = {
   enabled: boolean;
@@ -62,6 +64,8 @@ export type AppData = {
   days: Record<string, number>;
   /** Recently handled notification responses, so none is applied twice. */
   handled: string[];
+  /** The duck pet: growth, items found, name and what it's wearing. */
+  pond: PondState;
 };
 
 export const RULE_WORK_MIN = 20;
@@ -93,7 +97,12 @@ const minuteOfDay = (v: unknown, fallback: number) =>
   typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < 24 * 60 ? v : fallback;
 const isTime = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0;
 
-const fromAlert = (a: OldAlertStyle) => ({ sound: (a === 'quack' ? 'quack' : 'none') as SoundId, vibrate: a !== 'silent' });
+const OLD_ALERTS: readonly OldAlertStyle[] = ['quack', 'vibrate', 'silent'];
+
+const fromAlert = (a: OldAlertStyle) => ({
+  sound: (a === 'quack' ? 'quack' : 'none') as SoundId,
+  vibrate: a !== 'silent',
+});
 
 /**
  * Settings from the saved file: fills in what older versions didn't have, and replaces anything
@@ -104,8 +113,11 @@ export function settingsFrom(saved: unknown): Settings {
   // v0.1 had one sound switch and one vibration switch for everything.
   const v1: OldAlertStyle | undefined =
     raw.sound === undefined ? undefined : raw.sound ? 'quack' : raw.haptics === false ? 'silent' : 'vibrate';
-  const oldStart = raw.startAlert ?? v1;
-  const oldEnd = raw.endAlert ?? v1;
+  // An old alert style that isn't one we know is ignored (it must never silence reminders).
+  const known = (a: unknown): OldAlertStyle | undefined =>
+    OLD_ALERTS.includes(a as OldAlertStyle) ? (a as OldAlertStyle) : undefined;
+  const oldStart = known(raw.startAlert) ?? v1;
+  const oldEnd = known(raw.endAlert) ?? v1;
   delete raw.sound;
   delete raw.startAlert;
   delete raw.endAlert;
@@ -142,14 +154,20 @@ export function settingsFrom(saved: unknown): Settings {
 /**
  * The timer from the saved file, checked against the clock. If the clock went back (set by
  * hand, or a bad network time), saved times can sit far in the future, which would show a
- * break running for hours or push the next reminder out by a day. Nothing the app sets is more
- * than one break length ahead, so anything further is reset to now.
+ * break running for hours or push the next reminder out by a day. Nothing the app sets is further
+ * ahead than one break (a break's end) or a snooze longer than the reminder interval (the
+ * anchor), so anything further is reset to now.
+ *
+ * The limits come from the longest choices, not the current settings: a break or snooze keeps the
+ * length it started with, so shortening it in Settings mustn't make it look like a clock error.
  */
-export function timerFrom(saved: unknown, settings: Settings, now: number): TimerState {
+export function timerFrom(saved: unknown, now: number): TimerState {
   const raw: Partial<TimerState> = saved && typeof saved === 'object' ? (saved as Partial<TimerState>) : {};
-  const ahead = now + settings.breakSec * 1000 + 5_000;
-  const breakEndsAt = isTime(raw.breakEndsAt) && raw.breakEndsAt <= ahead ? raw.breakEndsAt : null;
-  const anchorOk = isTime(raw.anchor) && raw.anchor <= ahead;
+  const slack = 5_000;
+  const breakAhead = now + LONGEST_BREAK_MS + slack;
+  const anchorAhead = now + FURTHEST_ANCHOR_MS + slack;
+  const breakEndsAt = isTime(raw.breakEndsAt) && raw.breakEndsAt <= breakAhead ? raw.breakEndsAt : null;
+  const anchorOk = isTime(raw.anchor) && raw.anchor <= anchorAhead;
   const t: TimerState = {
     anchor: anchorOk ? (raw.anchor as number) : now,
     setAt: anchorOk && isTime(raw.setAt) ? Math.min(raw.setAt, now) : now,
@@ -168,9 +186,17 @@ export function defaultData(now: number): AppData {
     timer: { anchor: now, setAt: now, breakEndsAt: null },
     days: {},
     handled: [],
+    pond: defaultPond(),
   };
 }
 
 export const WORK_CHOICES = [5, 10, 15, 20, 25, 30, 40, 45, 50, 60, 75, 90];
 export const BREAK_CHOICES = [10, 15, 20, 30, 40, 60, 90, 120];
 export const SNOOZE_CHOICES = [5, 10, 15];
+
+/** The furthest ahead the app ever sets a break's end, and the anchor (a break's end, or a snooze). */
+const LONGEST_BREAK_MS = Math.max(...BREAK_CHOICES) * 1000;
+const FURTHEST_ANCHOR_MS = Math.max(
+  LONGEST_BREAK_MS,
+  (Math.max(...SNOOZE_CHOICES) - Math.min(...WORK_CHOICES)) * MINUTE,
+);
