@@ -463,10 +463,13 @@ type WalkConfig = {
   platformMax: number;
 };
 
-const WALKS = 250;
+// FUZZ_SEED and FUZZ_WALKS explore new cases (e.g. FUZZ_SEED=$RANDOM FUZZ_WALKS=2000 npm test);
+// the defaults keep every run the same. A failing walk prints its seed, so it can be replayed.
+const WALKS = Number(process.env.FUZZ_WALKS) || 250;
+const BASE_SEED = Number(process.env.FUZZ_SEED) || 0x5eed_0000;
 
 function walkConfig(index: number): WalkConfig {
-  const seed = 0x5eed_0000 + index * 7919;
+  const seed = (BASE_SEED + index * 7919) >>> 0;
   const rand = makeRand(seed);
   const zone = ZONES[index % ZONES.length]!;
   const nearSwitch = zone.switches.length > 0 && rand.chance(0.45);
@@ -1083,7 +1086,7 @@ describe('fuzz: random walks through the app state', () => {
       totalMs += res.ms;
       if (i === WALKS - 1) {
         const tallies = [...coverage].sort(([a], [b]) => a.localeCompare(b)).map(([k, n]) => `${k} ${n}`);
-        console.log(`fuzz: ${totalSteps} steps in ${(totalMs / 1000).toFixed(1)} s. Reached: ${tallies.join(', ')}`);
+        console.log(`fuzz (FUZZ_SEED=${BASE_SEED}, ${WALKS} walks): ${totalSteps} steps in ${(totalMs / 1000).toFixed(1)} s. Reached: ${tallies.join(', ')}`);
       }
       if (res.violations.length) {
         const others = res.violations.slice(1).map((v) => `  also: ${v.kind}`);

@@ -678,8 +678,12 @@ const OPTS: Opts[] = [
   { max: 150, horizonMs: 3 * DAY },
 ];
 
+// MATRIX_SEED and MATRIX_SCENARIOS explore new cases; the defaults keep every run the same.
+const SCENARIO_SEED = Number(process.env.MATRIX_SEED) || 0x5eed;
+const SCENARIOS = Number(process.env.MATRIX_SCENARIOS) || 60;
+
 function makeScenario(i: number): Scenario {
-  const rand = mulberry32(0x5eed + i * 7919);
+  const rand = mulberry32((SCENARIO_SEED + i * 7919) >>> 0);
   const int = (n: number) => Math.floor(rand() * n);
   const pick = <T,>(list: readonly T[]): T => list[int(list.length)]!;
   const randomQuiet = (): QuietHours => {
@@ -778,12 +782,12 @@ function checkInvariants({ now, settings: s, timer, opts }: Scenario): void {
   sameTimes(p.reminders, exp.reminders, 'reminders every workMin, back exactly workMin after quiet hours end, up to max and the horizon');
 }
 
-describe('property: 60 seeded random scenarios', () => {
+describe(`property: ${SCENARIOS} seeded random scenarios`, () => {
   // #57 is a tricky one (Auckland 5 Aug 10:57, every 50 min, quiet 14:37–11:12): now is inside
   // quiet hours 15 min before they end, and the first cadence point after now (11:22) is past the
   // 11:12 end and not quiet. The next reminder must still be 11:12 + 50 = 12:02, as in the
   // one-minute quiet hours test.
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < SCENARIOS; i++) {
     const sc = makeScenario(i);
     it(sc.name, () => {
       setZone(sc.zone);
