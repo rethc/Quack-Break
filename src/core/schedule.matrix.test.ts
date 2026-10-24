@@ -217,7 +217,7 @@ function expectedPlan(now: number, s: Settings, timer: TimerState, opts: { max?:
   const dueAt = start + work;
   const reminders: number[] = [];
   if (timer.paused) return { dueAt, reminders };
-  const ring = (t: number) => !!timer.snoozed && t === dueAt;
+  const ring = (t: number) => !!timer.snoozed && start === timer.anchor && t === dueAt;
   let c = dueAt <= now ? dueAt + (Math.floor((now - dueAt) / work) + 1) * work : dueAt;
   let lo = now;
   while (reminders.length < max && c <= horizon) {
@@ -759,21 +759,24 @@ function checkInvariants({ now, settings: s, timer, opts }: Scenario): void {
 
   assert.equal(p.quietNow, quietAt(now, q), 'quietNow');
   assert.equal(p.breakActive, timer.breakEndsAt !== null && timer.breakEndsAt > now, 'breakActive: a break runs until breakEndsAt');
-  assert.equal(p.dueAt, cadenceStart(now, timer, q) + work, 'dueAt is cadenceStart + workMin');
+  assert.equal(p.dueAt, cadenceStart(now, timer, q, work) + work, 'dueAt is cadenceStart + workMin');
   assert.equal(zoned(p.dueAt), zoned(exp.dueAt), 'dueAt: the cadence restarts at the last end of quiet hours after setAt and the anchor');
   if (timer.paused) {
     assert.deepEqual(p.reminders, [], 'paused: no reminders');
     assert.equal(p.overdue, false, 'paused: not overdue');
     return;
   }
-  assert.equal(p.overdue, !p.breakActive && now >= p.dueAt && (!p.quietNow || !!timer.snoozed), 'overdue');
+  // Only the snooze the user asked for rings in quiet hours: once quiet hours have restarted the
+  // cadence, dueAt is no longer that snooze, whatever the flag says.
+  const snoozePending = !!timer.snoozed && p.dueAt === timer.anchor + work;
+  assert.equal(p.overdue, !p.breakActive && now >= p.dueAt && (!p.quietNow || snoozePending), 'overdue');
   assert.ok(p.reminders.length <= max, `at most max (${max}) reminders`);
   p.reminders.forEach((r, i) => {
     assert.ok(r > now, `reminder #${i} ${zoned(r)} is after now`);
     assert.ok(r <= horizon, `reminder #${i} ${zoned(r)} is within the horizon`);
     if (i > 0) assert.ok(r > p.reminders[i - 1]!, `reminder #${i} ${zoned(r)} is after the one before`);
   });
-  const snoozeRing = (r: number) => !!timer.snoozed && r === p.dueAt;
+  const snoozeRing = (r: number) => snoozePending && r === p.dueAt;
   assert.deepEqual(
     p.reminders.filter((r) => quietAt(r, q) && !snoozeRing(r)).map(zoned),
     [],
@@ -789,12 +792,31 @@ describe(`property: ${SCENARIOS} seeded random scenarios`, () => {
   // one-minute quiet hours test.
   for (let i = 0; i < SCENARIOS; i++) {
     const sc = makeScenario(i);
-    it(sc.name, () => {
+    it(sc.name, (t) => {
       setZone(sc.zone);
+      if (boundaryRepeats(sc)) {
+        t.skip('a quiet-hours edge inside the hour repeated when the clocks go back: see the clock-change tests');
+        return;
+      }
       checkInvariants(sc);
     });
   }
 });
+
+/**
+ * A quiet-hours start or end inside the hour the clocks repeat when they go back, near the
+ * scenario. Planning keeps quiet hours from the first time their start comes round to the last
+ * time their end does, so they never end twice. quietAt here only reads the wall clock, which
+ * ends them at the first of the two times and starts them again when the hour repeats. The
+ * clock-change tests above check those nights against the planning rule itself.
+ */
+function boundaryRepeats({ zone, now, settings: s, opts }: Scenario): boolean {
+  const f = zone.fall;
+  const q = s.quiet;
+  if (!f || !q.enabled || f.at < now - 4 * DAY || f.at > now + (opts.horizonMs ?? 8 * DAY) + DAY) return false;
+  const inRepeat = (m: number) => m >= f.from && m < f.from + f.len;
+  return inRepeat(q.startMin) || inRepeat(q.endMin);
+}
 
 // =============================================================================================
 // 5. States and transitions (London, June, quiet 22:00–08:00)
