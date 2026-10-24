@@ -1,11 +1,14 @@
 import * as Notifications from 'expo-notifications';
-import { router, Stack } from 'expo-router';
+import { NavigationBar } from 'expo-navigation-bar';
+import { router, Stack, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
-import { AppState } from 'react-native';
+import { AppState, StyleSheet, View } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 
+import { Button } from '@/components/Button';
+import { Text } from '@/components/Text';
 import { completeBreakIfDone } from '@/services/breaks';
 import { applyResponse, installNotificationHandler, syncSchedule } from '@/services/notifications';
 import { reloadData } from '@/services/storage';
@@ -28,6 +31,7 @@ export default function RootLayout() {
   return (
     <>
       <StatusBar style={dark ? 'light' : 'dark'} />
+      <NavigationBar style={dark ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerShown: false,
@@ -44,6 +48,26 @@ export default function RootLayout() {
     </>
   );
 }
+
+/** If a screen ever crashes: a way back instead of a blank screen. Booked reminders are unaffected. */
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.error, { backgroundColor: colors.bg }]}>
+      <Text variant="title" center>
+        Something went wrong
+      </Text>
+      <Text variant="body" soft center>
+        Your break reminders are still on.
+      </Text>
+      <Button title="Try again" onPress={() => void retry()} />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  error: { flex: 1, justifyContent: 'center', padding: 24, gap: 16 },
+});
 
 /** Each time the app comes to the front: pick up changes, count finished breaks, top up the schedule. */
 function useCatchUpOnOpen() {
@@ -77,17 +101,18 @@ function useCatchUpOnOpen() {
 /** "Start break", "Snooze", or a plain tap on a notification. */
 function useNotificationTaps() {
   useEffect(() => {
-    const handle = (r: Notifications.NotificationResponse) => {
-      const outcome = applyResponse(r);
+    const handle = (r: Notifications.NotificationResponse, live: boolean) => {
+      const outcome = applyResponse(r, live);
       void syncSchedule();
-      if (outcome === 'break') router.navigate('/break');
+      // A button pressed while the app is in the background (Android) doesn't open it.
+      if (outcome === 'break' && AppState.currentState !== 'background') router.navigate('/break');
     };
     const last = Notifications.getLastNotificationResponse();
     if (last) {
-      handle(last);
+      handle(last, false);
       Notifications.clearLastNotificationResponse();
     }
-    const sub = Notifications.addNotificationResponseReceivedListener(handle);
+    const sub = Notifications.addNotificationResponseReceivedListener((r) => handle(r, true));
     return () => sub.remove();
   }, []);
 }

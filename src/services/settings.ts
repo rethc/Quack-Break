@@ -12,7 +12,7 @@ let syncTimer: ReturnType<typeof setTimeout> | undefined;
  * reminders never holds up a sound preview).
  */
 export function saveSettings(patch: Partial<Settings>, { sync = true } = {}) {
-  updateData((d) => updateSettings(d, patch));
+  updateData((d) => updateSettings(d, patch, Date.now()));
   if (!sync) return;
   clearTimeout(syncTimer);
   syncTimer = setTimeout(() => void syncSchedule(), 600);

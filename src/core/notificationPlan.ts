@@ -8,22 +8,31 @@ import {
   reminderBodies,
   reminderTitles,
 } from './messages.ts';
-import { planBreaks } from './schedule.ts';
+import { isQuiet, MINUTE, nextQuietEnd, planBreaks } from './schedule.ts';
 import type { AppData, Settings } from './types.ts';
 
 export type PlannedNotification = {
   id: string;
   at: number;
-  kind: 'due' | 'over';
+  kind: 'due' | 'over' | 'out';
   title: string;
   body: string;
 };
 
-/** iOS keeps at most 64 pending; leave room for the break-over and test notifications. */
+/** iOS keeps at most 64 pending; leave room for the break-over, last-call and test notifications. */
 export const MAX_REMINDERS = 60;
 
+/**
+ * Android has no such limit (only ~500 alarms per app), so it books further ahead. The app
+ * also tops the list up in the background before it runs low (see modules/quack-timer).
+ */
+export const MAX_REMINDERS_ANDROID = 150;
+
+export const OUT_TITLE = 'Break reminders paused';
+export const OUT_BODY = 'Open Quack Break to keep them coming.';
+
 /** Bump when notification content changes shape, so booked notifications get replaced. */
-const CONTENT_VERSION = 3;
+const CONTENT_VERSION = 5;
 
 export function contentFingerprint(s: Settings): string {
   return hash(
@@ -31,7 +40,12 @@ export function contentFingerprint(s: Settings): string {
   ).toString(36);
 }
 
-export function planNotifications(data: AppData, now: number): PlannedNotification[] {
+/**
+ * Reminders, the break-over alert, and a last call: if the booked reminders ever run out
+ * (the app wasn't opened and couldn't top them up), one more notification says so instead of
+ * reminders silently stopping. Each sync moves it further out, so normally it never shows.
+ */
+export function planNotifications(data: AppData, now: number, max = MAX_REMINDERS): PlannedNotification[] {
   if (!data.onboarded) return [];
   const { settings, timer } = data;
   const fp = contentFingerprint(settings);
@@ -47,7 +61,7 @@ export function planNotifications(data: AppData, now: number): PlannedNotificati
     });
   }
 
-  const plan = planBreaks(now, settings, timer, { max: MAX_REMINDERS });
+  const plan = planBreaks(now, settings, timer, { max });
   for (const at of plan.reminders) {
     out.push({
       id: `due_${at}_${fp}`,
@@ -56,6 +70,13 @@ export function planNotifications(data: AppData, now: number): PlannedNotificati
       title: pick(reminderTitles, at),
       body: pick(reminderBodies(settings.breakSec), at + 1),
     });
+  }
+
+  const last = plan.reminders[plan.reminders.length - 1];
+  if (last !== undefined) {
+    let at = last + settings.workMin * MINUTE;
+    if (isQuiet(at, settings.quiet)) at = nextQuietEnd(at, settings.quiet);
+    out.push({ id: `out_${at}_${fp}`, at, kind: 'out', title: OUT_TITLE, body: OUT_BODY });
   }
   return out;
 }

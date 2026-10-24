@@ -8,7 +8,9 @@ import { PondScene } from '@/components/PondScene';
 import { Screen } from '@/components/Screen';
 import { SpeechBubble } from '@/components/SpeechBubble';
 import { Text } from '@/components/Text';
+import { isQuiet, MINUTE, nextQuietEnd } from '@/core/schedule';
 import { finishOnboarding } from '@/core/transitions';
+import type { Settings } from '@/core/types';
 import { haptic } from '@/services/haptics';
 import {
   hasExactAlarms,
@@ -18,11 +20,12 @@ import {
   syncSchedule,
 } from '@/services/notifications';
 import { updateData, useData } from '@/services/storage';
+import { formatClock } from '@/utils/format';
 
 type Step = 'hello' | 'exact' | 'ready';
 
 export default function Welcome() {
-  const workMin = useData((d) => d.settings.workMin);
+  const settings = useData((d) => d.settings);
   const [step, setStep] = useState<Step>('hello');
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [mode, setMode] = useState<DuckMode>('enter');
@@ -43,10 +46,19 @@ export default function Welcome() {
 
   const allow = async () => {
     haptic.tap();
-    const ok = await requestNotificationPermission();
-    setAllowed(ok);
-    if (ok && needsExactAlarmPermission && !(await hasExactAlarms())) setStep('exact');
-    else setStep('ready');
+    let ok = false;
+    try {
+      ok = await requestNotificationPermission();
+      setAllowed(ok);
+      if (ok && needsExactAlarmPermission && !(await hasExactAlarms())) {
+        setStep('exact');
+        return;
+      }
+    } catch (e) {
+      console.warn('Could not ask for notification permission', e);
+      setAllowed(ok);
+    }
+    setStep('ready');
   };
 
   const finish = () => {
@@ -58,7 +70,7 @@ export default function Welcome() {
 
   const bubble =
     step === 'hello'
-      ? "Hi! I'm your break duck 🦆"
+      ? "Hi! I'm your break duck."
       : step === 'exact'
         ? 'One more thing, so I can be on time.'
         : allowed
@@ -76,8 +88,8 @@ export default function Welcome() {
         <View style={styles.block}>
           <Text variant="title">Rest your eyes, one quack at a time</Text>
           <Text variant="body">
-            The 20-20-20 rule: every 20 minutes, look at something 20 feet (6 m) away for 20 seconds. I&apos;ll
-            remind you.
+            The 20-20-20 rule: every 20 minutes, look at something 20 feet (6 m) away for 20 seconds. I&apos;ll remind
+            you.
           </Text>
           <Text variant="body" soft>
             Want different timing? You can change it in Settings.
@@ -90,8 +102,8 @@ export default function Welcome() {
         <View style={styles.block}>
           <Text variant="title">Stay on time</Text>
           <Text variant="body">
-            Android can delay reminders to save battery. Turn on <Text variant="label">Alarms &amp; reminders</Text>{' '}
-            so they arrive on time.
+            Android can delay reminders to save battery. Turn on <Text variant="label">Alarms &amp; reminders</Text> so
+            they arrive on time.
           </Text>
           <Button title="Open settings" onPress={() => void requestExactAlarms()} />
           <Button title="Not now" variant="ghost" onPress={() => setStep('ready')} />
@@ -102,15 +114,20 @@ export default function Welcome() {
         <View style={styles.block}>
           <Text variant="title">{allowed ? "You're all set" : 'Reminders are off'}</Text>
           <Text variant="body">
-            {allowed
-              ? `First reminder in ${workMin} minutes.`
-              : 'You can turn them on later in Settings.'}
+            {allowed ? firstReminderText(settings) : 'You can turn them on later in Settings.'}
           </Text>
           <Button title="Start" onPress={finish} />
         </View>
       )}
     </Screen>
   );
+}
+
+/** "First reminder in 20 minutes", or the time if quiet hours come first. */
+function firstReminderText(s: Settings) {
+  const now = Date.now();
+  if (!isQuiet(now, s.quiet)) return `First reminder in ${s.workMin} minutes.`;
+  return `First reminder at ${formatClock(nextQuietEnd(now, s.quiet) + s.workMin * MINUTE)}, after quiet hours.`;
 }
 
 const styles = StyleSheet.create({

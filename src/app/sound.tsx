@@ -6,11 +6,11 @@ import { Platform, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { BackIcon, IconButton } from '@/components/Icons';
 import { Screen } from '@/components/Screen';
-import { Card, ChoiceRow, RadioRow } from '@/components/SettingRows';
+import { Card, CardBlock, ChoiceRow, RadioRow } from '@/components/SettingRows';
 import { Text } from '@/components/Text';
 import { ANDROID_ONLY_SOUNDS, SOUND_OPTIONS, VOICE_OPTIONS, type Moment } from '@/core/sounds';
 import type { SoundId } from '@/core/types';
-import { openPhoneSoundPicker, previewMoment, stopPreview, syncSchedule } from '@/services/notifications';
+import { openChannelSettings, previewMoment, stopPreview, syncSchedule } from '@/services/notifications';
 import { saveSettings } from '@/services/settings';
 import { useData } from '@/services/storage';
 
@@ -35,16 +35,13 @@ export default function SoundScreen() {
   // Choosing plays the sound; choosing the same one again replays it.
   const pick = (v: SoundId) => {
     saveSettings({ [key]: v }, { sync: false });
-    void previewMoment(moment);
+    previewMoment(moment).catch((e) => console.warn('Could not play the preview', e));
   };
 
   return (
     <Screen>
       <View style={styles.header}>
-        <IconButton
-          label="Back"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/settings'))}
-        >
+        <IconButton label="Back" onPress={() => (router.canGoBack() ? router.back() : router.replace('/settings'))}>
           {(c) => <BackIcon color={c} />}
         </IconButton>
         <Text variant="title" style={styles.flex}>
@@ -67,7 +64,7 @@ export default function SoundScreen() {
             columns={4}
             onChange={(v) => {
               saveSettings({ voice: v }, { sync: false });
-              void previewMoment(moment);
+              previewMoment(moment).catch((e) => console.warn('Could not play the preview', e));
             }}
           />
         </Card>
@@ -75,8 +72,14 @@ export default function SoundScreen() {
 
       {Platform.OS === 'android' && current === 'phone' && (
         <Card>
-          <Text variant="body">Use any ringtone or notification sound on your phone.</Text>
-          <Button title="Choose phone sound" variant="secondary" onPress={() => void openPhoneSoundPicker(moment)} />
+          <CardBlock>
+            <Text variant="body">Use any ringtone or notification sound on your phone.</Text>
+            <Button
+              title="Choose phone sound"
+              variant="secondary"
+              onPress={() => openChannelSettings(moment).catch((e) => console.warn('Could not open settings', e))}
+            />
+          </CardBlock>
         </Card>
       )}
 

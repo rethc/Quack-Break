@@ -1,16 +1,16 @@
 // What the duck says. The duck talks in speech bubbles and celebrations;
 // notifications and the rest of the app stay plain.
 
-export const reminderTitles = ['Break time 🦆'];
+export const reminderTitles = ['Break time'];
 
 export const reminderBodies = (sec: number) => [`Look far away for ${sec} seconds.`];
 
-export const breakOverTitles = ['Break over 🦆'];
+export const breakOverTitles = ['Break over'];
 
 export const breakOverBodies = ['Back to it.'];
 
 export const breakLines = [
-  "Look out the window, I'll wait 🦆",
+  "Look out the window. I'll wait.",
   'Find something about 20 feet away. A tree, a cloud, a far wall.',
   'Let your eyes go soft and far.',
   'Blink slowly, like a sleepy duck.',
@@ -43,7 +43,7 @@ export const waitingLines = [
 export const dueLines = [
   'Break time! Got a few seconds?',
   'Psst. Eyes up, look far away?',
-  'Ready when you are 🦆',
+  'Ready when you are!',
 ];
 
 export const pausedLines = ['Taking a breather. I’ll be here.', 'Reminders are off. Resume any time.'];

@@ -1,6 +1,6 @@
 // Keeps the Android timer notification in step with the schedule, and applies its Stop button.
 import type { PlannedNotification } from '@/core/notificationPlan';
-import { skipBreak, stopReminders } from '@/core/transitions';
+import { resumeReminders, skipBreak, stopReminders } from '@/core/transitions';
 import type { AppData } from '@/core/types';
 
 import { onTimerAction, setTimerPlan, takeTimerActions, timerAvailable } from '../../modules/quack-timer';
@@ -13,25 +13,35 @@ const TEXT = {
   nextAtTitle: 'Next break at %s',
   breakTitle: 'Eye break',
   stopLabel: 'Stop',
+  stoppedTitle: 'Reminders stopped',
+  stoppedText: 'No break reminders until you resume.',
+  resumeLabel: 'Resume',
   channelName: 'Timer',
 };
 
-/** Apply Stop presses made on the notification. Run before reading or syncing the schedule. */
+/** Apply buttons pressed on the notification. Run before reading or syncing the schedule. */
 export function applyTimerActions() {
   for (const a of takeTimerActions()) {
-    updateData((d) => (a.type === 'stop' ? stopReminders(d, a.at) : skipBreak(d, a.at)));
+    updateData((d) =>
+      a.type === 'stop' ? stopReminders(d, a.at) : a.type === 'resume' ? resumeReminders(d, a.at) : skipBreak(d, a.at),
+    );
   }
 }
 
-/** Show the countdown for the planned notifications, or hide it (data null, off, or stopped). */
-export function updateTimer(data: AppData | null, planned: readonly PlannedNotification[] = []) {
+/**
+ * Hand the schedule to the native side: the tray countdown (if on), tidying old reminders out
+ * of the tray, and the background top-up at `refillAt`. With data null, everything is off.
+ */
+export function updateTimer(data: AppData | null, planned: readonly PlannedNotification[] = [], refillAt = 0) {
   if (!timerAvailable) return;
-  const on = !!data && data.onboarded && data.settings.trayTimer && !data.timer.paused;
+  const ready = !!data && data.onboarded;
   setTimerPlan({
     ...TEXT,
-    enabled: on,
-    breakEndsAt: on ? (data.timer.breakEndsAt ?? 0) : 0,
+    enabled: ready && data.settings.trayTimer,
+    paused: ready && !!data.timer.paused,
+    breakEndsAt: ready ? (data.timer.breakEndsAt ?? 0) : 0,
     overId: planned.find((n) => n.kind === 'over')?.id ?? '',
-    reminders: on ? planned.filter((n) => n.kind === 'due').map((n) => n.at) : [],
+    reminders: planned.filter((n) => n.kind === 'due').map((n) => n.at),
+    refillAt: ready ? refillAt : 0,
   });
 }

@@ -5,8 +5,8 @@ import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { Linking, Platform } from 'react-native';
 
-import { planNotifications } from '@/core/notificationPlan';
-import { MINUTE } from '@/core/schedule';
+import { MAX_REMINDERS, MAX_REMINDERS_ANDROID, planNotifications, type PlannedNotification } from '@/core/notificationPlan';
+import { HOUR, MINUTE } from '@/core/schedule';
 import { soundFile, vibrateOf, type Moment } from '@/core/sounds';
 import { rememberHandled, snooze, startBreak } from '@/core/transitions';
 
@@ -29,8 +29,8 @@ const TEST_PREFIX = 'test_';
 /** Ignore taps on notifications older than this (e.g. found in the tray hours later). */
 const STALE_MS = 30 * MINUTE;
 
-type Kind = 'due' | 'over' | 'test' | 'preview';
-const KINDS: readonly string[] = ['due', 'over', 'test', 'preview'];
+type Kind = 'due' | 'over' | 'out' | 'test' | 'preview';
+const KINDS: readonly string[] = ['due', 'over', 'out', 'test', 'preview'];
 
 /**
  * Which of our notifications this is. Background tasks get the data as a JSON string
@@ -78,7 +78,7 @@ const CHANNEL_TEXT: Record<Moment, { name: string; description: string }> = {
 };
 const VIBRATION = [0, 120, 90, 160];
 
-const momentOf = (kind: Kind | undefined): Moment => (kind === 'over' ? 'end' : 'start');
+const momentOf = (kind: Kind | PlannedNotification['kind'] | undefined): Moment => (kind === 'over' ? 'end' : 'start');
 const fileFor = (m: Moment) => soundFile(m, getData().settings);
 const soundForChannel = (file: string | null): { sound?: string | null } =>
   file === 'default' ? {} : { sound: file };
@@ -92,34 +92,46 @@ const channelIdFor = (m: Moment) => {
   return `${CHANNEL_PREFIX}${m}_${file ? file.replace('.wav', '') : 'none'}_${vibrateOf(m, s) ? 'v' : 'n'}`;
 };
 
-
 // Android channels can't change sound/vibration after creation,
 // so each moment + sound + vibration gets its own channel id and unused ones are deleted.
 let readyChannels: string | null = null;
 let prunedChannels: string | null = null;
 
-/**
- * Make sure both moments' channels exist for the current settings. Only `prune` (used when
- * syncing the schedule) deletes channels that are no longer used: a preview may still be
- * waiting to play on the previous sound's channel.
- */
-export async function ensureChannels(prune = false): Promise<Record<Moment, string> | undefined> {
+/** Make sure both moments' channels exist for the current settings. */
+export async function ensureChannels(): Promise<Record<Moment, string> | undefined> {
   if (Platform.OS !== 'android') return undefined;
   const ids: Record<Moment, string> = { start: channelIdFor('start'), end: channelIdFor('end') };
   const key = `${ids.start}|${ids.end}`;
   if (readyChannels !== key) await createChannels(ids);
   readyChannels = key;
-  if (prune && prunedChannels !== key) {
-    const keep = new Set(Object.values(ids));
-    const channels = await Notifications.getNotificationChannelsAsync();
-    await Promise.all(
-      channels
-        .filter((c) => ownsChannel(c.id) && !keep.has(c.id))
-        .map((c) => Notifications.deleteNotificationChannelAsync(c.id)),
-    );
-    prunedChannels = key;
-  }
   return ids;
+}
+
+/**
+ * Delete channels the current settings no longer use. Runs after reminders are rebooked on the
+ * new channels: a reminder still booked on a deleted channel would post on Android's fallback
+ * channel with the wrong sound.
+ */
+async function pruneChannels(ids: Record<Moment, string> | undefined) {
+  if (!ids) return;
+  const key = `${ids.start}|${ids.end}`;
+  if (prunedChannels === key) return;
+  const keep = new Set(Object.values(ids));
+  const channels = await Notifications.getNotificationChannelsAsync();
+  await Promise.allSettled(
+    channels
+      .filter((c) => ownsChannel(c.id) && !keep.has(c.id))
+      .map((c) => Notifications.deleteNotificationChannelAsync(c.id)),
+  );
+  prunedChannels = key;
+}
+
+/** Android: break reminders were turned off for this app in the phone's notification settings. */
+export async function remindersBlocked(): Promise<boolean> {
+  const ids = await ensureChannels();
+  if (!ids) return false;
+  const channel = await Notifications.getNotificationChannelAsync(ids.start);
+  return channel?.importance === Notifications.AndroidImportance.NONE;
 }
 
 async function createChannels(ids: Record<Moment, string>) {
@@ -152,6 +164,9 @@ async function ensureCategory() {
   ]);
   readyCategory = snoozeMin;
 }
+
+/** How many reminders to book ahead. iOS allows 64 pending notifications in all. */
+const maxReminders = Platform.OS === 'android' ? MAX_REMINDERS_ANDROID : MAX_REMINDERS;
 
 export async function canNotify(): Promise<boolean> {
   const p = await Notifications.getPermissionsAsync();
@@ -212,23 +227,25 @@ async function doSync() {
   }
   const exact = await hasExactAlarms();
   const rearm = Platform.OS === 'android' && armedWithExact !== exact;
-  const channels = await ensureChannels(true);
+  const channels = await ensureChannels();
   await ensureCategory();
 
-  const want = planNotifications(data, Date.now());
+  const now = Date.now();
+  const want = planNotifications(data, now, maxReminders);
   const wantIds = new Set(want.map((n) => n.id));
   const existing = await Notifications.getAllScheduledNotificationsAsync();
   const existingIds = new Set(existing.map((r) => r.identifier));
 
-  await Promise.all(
+  const cancelled = await Promise.allSettled(
     existing
       .filter((r) => !wantIds.has(r.identifier) && !r.identifier.startsWith(TEST_PREFIX))
       .map((r) => Notifications.cancelScheduledNotificationAsync(r.identifier)),
   );
 
-  await Promise.all(
+  // A time that has just passed is skipped: Android drops it silently and iOS rejects it.
+  const booked = await Promise.allSettled(
     want
-      .filter((n) => rearm || !existingIds.has(n.id))
+      .filter((n) => (rearm || !existingIds.has(n.id)) && n.at > Date.now() + 2000)
       .map((n) =>
         Notifications.scheduleNotificationAsync({
           identifier: n.id,
@@ -239,7 +256,9 @@ async function doSync() {
             sound: contentSound(momentOf(n.kind)),
             vibrate: contentVibrate(momentOf(n.kind)),
             categoryIdentifier: n.kind === 'due' ? CATEGORY_DUE : undefined,
-            threadIdentifier: 'quack',
+            // iPhone groups these in Notification Center. Android would add a separate summary
+            // notification for the group, so it gets none (only one alert is kept there anyway).
+            threadIdentifier: Platform.OS === 'ios' ? 'quack' : undefined,
             color: '#F5B935',
           },
           trigger: {
@@ -250,8 +269,21 @@ async function doSync() {
         }),
       ),
   );
-  armedWithExact = exact;
-  updateTimer(data, want);
+  const failed = [...cancelled, ...booked].filter((r) => r.status === 'rejected');
+  if (failed.length) console.warn(`Could not update ${failed.length} reminders`, failed[0]);
+  else armedWithExact = exact;
+  await pruneChannels(channels).catch(() => {});
+  updateTimer(data, want, refillTime(want, now));
+}
+
+/**
+ * When to top up the booked reminders in the background (Android): two thirds of the way
+ * through them, and at least twice a day so a changed time zone or clock is caught too.
+ */
+function refillTime(planned: readonly PlannedNotification[], now: number): number {
+  const due = planned.filter((n) => n.kind === 'due');
+  if (!due.length) return 0;
+  return Math.min(due[Math.floor((due.length * 2) / 3)]!.at, now + 12 * HOUR);
 }
 
 /** A reminder in a few seconds, with the real buttons, for checking things work. */
@@ -261,7 +293,7 @@ export async function sendTestReminder(seconds = 10) {
   await Notifications.scheduleNotificationAsync({
     identifier: `${TEST_PREFIX}${Date.now()}`,
     content: {
-      title: 'Test reminder 🦆',
+      title: 'Test reminder',
       body: 'This is what break reminders look like.',
       data: { kind: 'test' },
       sound: contentSound('start'),
@@ -315,8 +347,11 @@ export function stopPreview() {
   stopPreviewSound();
 }
 
-/** Android: open the system settings for a moment's channel, where any installed tone can be picked. */
-export async function openPhoneSoundPicker(m: Moment) {
+/**
+ * Android: open the system settings for a moment's channel, where any installed tone can be
+ * picked, or a blocked channel turned back on.
+ */
+export async function openChannelSettings(m: Moment) {
   const ids = await ensureChannels();
   if (!ids) return;
   const pkg = Constants.expoConfig?.android?.package ?? 'com.chesd.quackbreak';
@@ -336,8 +371,12 @@ export type ResponseOutcome = 'break' | 'home' | 'none';
  * Apply a tap on a notification or one of its buttons. Each response is applied once,
  * even if it arrives through several paths (listener, cold start, background task).
  * The caller should navigate based on the result and then call syncSchedule().
+ *
+ * `live` is false for a tap replayed at launch (it may be from long ago): then only a recent
+ * notification starts a break. A button tapped just now always counts, however old the
+ * notification it was on.
  */
-export function applyResponse(r: Notifications.NotificationResponse): ResponseOutcome {
+export function applyResponse(r: Notifications.NotificationResponse, live: boolean): ResponseOutcome {
   const req = r.notification.request;
   const key = `${req.identifier}|${r.actionIdentifier}`;
   if (getData().handled.includes(key)) return 'none';
@@ -348,17 +387,16 @@ export function applyResponse(r: Notifications.NotificationResponse): ResponseOu
   // Some platforms report seconds instead of milliseconds.
   const sentAt = r.notification.date < 1e12 ? r.notification.date * 1000 : r.notification.date;
   const fresh = now - sentAt < STALE_MS;
+  const button = r.actionIdentifier === ACTION_SNOOZE || r.actionIdentifier === ACTION_START;
   const kind = kindOf(r.notification);
 
-  if (kind === 'due' || kind === 'test') {
+  if ((kind === 'due' || kind === 'test') && (fresh || (live && button))) {
     if (r.actionIdentifier === ACTION_SNOOZE) {
-      if (fresh) updateData((d) => snooze(d, now));
+      updateData((d) => snooze(d, now));
       return 'none';
     }
-    if (fresh) {
-      updateData((d) => startBreak(d, now));
-      return 'break';
-    }
+    updateData((d) => startBreak(d, now));
+    return 'break';
   }
   return 'home';
 }

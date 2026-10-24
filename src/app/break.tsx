@@ -1,14 +1,12 @@
-import { useKeepAwake } from 'expo-keep-awake';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { AccessibilityInfo, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/Button';
-import { CountdownRing } from '@/components/CountdownRing';
 import { Duck, ENTER_MS, type DuckMode } from '@/components/duck/Duck';
-import { PondScene } from '@/components/PondScene';
+import { Porthole } from '@/components/Porthole';
 import { Screen } from '@/components/Screen';
-import { SpeechBubble } from '@/components/SpeechBubble';
 import { Text } from '@/components/Text';
 import { breakLines, doneLines, pickFresh, skipLines } from '@/core/messages';
 import { dayKey } from '@/core/schedule';
@@ -20,8 +18,9 @@ import { radius, useTheme } from '@/theme';
 
 type Phase = 'running' | 'done' | 'skipped';
 
+const KEEP_AWAKE_TAG = 'break';
+
 export default function BreakScreen() {
-  useKeepAwake();
   const { colors } = useTheme();
   const breakSec = useData((d) => d.settings.breakSec);
   const breakEndsAt = useData((d) => d.timer.breakEndsAt);
@@ -51,6 +50,16 @@ export default function BreakScreen() {
   const timeUp = endsAt > 0 && msLeft <= 0;
   const phase: Phase = skipped ? 'skipped' : timeUp ? 'done' : 'running';
 
+  // Keep the screen on while the countdown runs, then let the phone sleep and lock as usual:
+  // people walk away from the "done" screen.
+  useEffect(() => {
+    if (phase !== 'running') return;
+    activateKeepAwakeAsync(KEEP_AWAKE_TAG).catch(() => {});
+    return () => {
+      deactivateKeepAwake(KEEP_AWAKE_TAG).catch(() => {});
+    };
+  }, [phase]);
+
   useEffect(() => {
     if (phase !== 'done') return;
     completeBreakIfDone();
@@ -75,21 +84,46 @@ export default function BreakScreen() {
 
   const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
+  // While the break runs the screen goes quieter: you're meant to be looking away.
   return (
-    <Screen contentStyle={styles.content}>
+    <Screen contentStyle={styles.content} background={phase === 'running' ? colors.calm : colors.bg}>
       <Text variant="title" center>
-        {phase === 'running' ? 'Eye break' : phase === 'done' ? 'Quack quack!' : 'Skipped'}
+        {phase === 'running' ? 'Look far away' : phase === 'done' ? 'Quack quack!' : 'Skipped'}
       </Text>
 
-      <SpeechBubble text={lines[phase]} />
-
-      <PondScene height={200}>
-        <Duck mode={mode} size={140} />
-      </PondScene>
+      <Porthole progress={phase === 'running' ? progress : null}>
+        <Duck mode={mode} size={130} />
+      </Porthole>
 
       {phase === 'running' && (
-        <>
-          <CountdownRing secondsLeft={secondsLeft} progress={progress} />
+        <View
+          accessible
+          accessibilityRole="timer"
+          accessibilityLabel={`${secondsLeft} ${secondsLeft === 1 ? 'second' : 'seconds'} left`}
+        >
+          <Text variant="display" center>
+            {secondsLeft}
+          </Text>
+          <Text variant="body" soft center>
+            seconds
+          </Text>
+        </View>
+      )}
+
+      {phase === 'done' && (
+        <View style={[styles.chip, { backgroundColor: colors.card }]}>
+          <Text variant="label" center>
+            🐣 {today} {today === 1 ? 'break' : 'breaks'} today
+          </Text>
+        </View>
+      )}
+
+      <Text variant="body" soft center style={styles.line}>
+        {lines[phase]}
+      </Text>
+
+      <View style={styles.actions}>
+        {phase === 'running' && (
           <Button
             title="Skip"
             variant="ghost"
@@ -99,27 +133,17 @@ export default function BreakScreen() {
               setSkipped(true);
             }}
           />
-        </>
-      )}
-
-      {phase === 'done' && (
-        <>
-          <View style={[styles.chip, { backgroundColor: colors.card, borderBottomColor: colors.cardEdge }]}>
-            <Text variant="label" center>
-              🐣 {today} {today === 1 ? 'break' : 'breaks'} today
-            </Text>
-          </View>
-          <Button title="Back to it" onPress={close} style={styles.wide} />
-        </>
-      )}
-
-      {phase === 'skipped' && <Button title="Back" variant="secondary" onPress={close} style={styles.wide} />}
+        )}
+        {phase === 'done' && <Button title="Back to it" onPress={close} />}
+        {phase === 'skipped' && <Button title="Back" variant="secondary" onPress={close} />}
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { alignItems: 'center', justifyContent: 'center' },
-  chip: { borderRadius: radius.m, borderBottomWidth: 4, paddingVertical: 10, paddingHorizontal: 18 },
-  wide: { alignSelf: 'stretch' },
+  content: { alignItems: 'center', justifyContent: 'center', gap: 24 },
+  chip: { borderRadius: radius.m, paddingVertical: 10, paddingHorizontal: 18 },
+  line: { maxWidth: 300 },
+  actions: { alignSelf: 'stretch', gap: 12 },
 });

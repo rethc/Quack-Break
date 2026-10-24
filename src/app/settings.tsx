@@ -1,24 +1,17 @@
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { AppState, Linking, Platform, StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { BackIcon, IconButton } from '@/components/Icons';
 import { Screen } from '@/components/Screen';
-import { Card, LinkRow, Stepper, ToggleRow } from '@/components/SettingRows';
+import { ActionRow, Card, CardBlock, LinkRow, StatusRow, Stepper, ToggleRow } from '@/components/SettingRows';
 import { Text } from '@/components/Text';
 import { soundLabel } from '@/core/sounds';
 import { BREAK_CHOICES, RULE_BREAK_SEC, RULE_WORK_MIN, SNOOZE_CHOICES, WORK_CHOICES } from '@/core/types';
 import { haptic } from '@/services/haptics';
-import {
-  canNotify,
-  hasExactAlarms,
-  needsExactAlarmPermission,
-  requestExactAlarms,
-  requestNotificationPermission,
-  sendTestReminder,
-  syncSchedule,
-} from '@/services/notifications';
+import { turnOnNotifications, usePermissions } from '@/hooks/usePermissions';
+import { needsExactAlarmPermission, requestExactAlarms, sendTestReminder } from '@/services/notifications';
 import { saveSettings } from '@/services/settings';
 import { timerAvailable } from '@/services/timer';
 import { useData } from '@/services/storage';
@@ -27,12 +20,11 @@ import { formatMinuteOfDay } from '@/utils/format';
 
 const TIME_CHOICES = Array.from({ length: 48 }, (_, i) => i * 30);
 
-
 export default function SettingsScreen() {
   const { colors } = useTheme();
   const s = useData((d) => d.settings);
   const perms = usePermissions();
-  const [testSent, setTestSent] = useState(false);
+  const [testSent, setTestSent] = useState<'sent' | 'failed' | null>(null);
 
   return (
     <Screen>
@@ -49,7 +41,9 @@ export default function SettingsScreen() {
           hint="A 20-second break every 20 minutes. Turn off to set your own."
           value={s.rule202020}
           onChange={(v) =>
-            saveSettings(v ? { rule202020: true, workMin: RULE_WORK_MIN, breakSec: RULE_BREAK_SEC } : { rule202020: false })
+            saveSettings(
+              v ? { rule202020: true, workMin: RULE_WORK_MIN, breakSec: RULE_BREAK_SEC } : { rule202020: false },
+            )
           }
         />
         {!s.rule202020 && (
@@ -87,16 +81,17 @@ export default function SettingsScreen() {
         />
         {s.quiet.enabled && (
           <>
+            {/* From and Until can't be the same time, which would mean no quiet hours at all. */}
             <Stepper
               label="From"
-              values={TIME_CHOICES}
+              values={TIME_CHOICES.filter((t) => t !== s.quiet.endMin)}
               value={s.quiet.startMin}
               format={formatMinuteOfDay}
               onChange={(v) => saveSettings({ quiet: { ...s.quiet, startMin: v } })}
             />
             <Stepper
               label="Until"
-              values={TIME_CHOICES}
+              values={TIME_CHOICES.filter((t) => t !== s.quiet.startMin)}
               value={s.quiet.endMin}
               format={formatMinuteOfDay}
               onChange={(v) => saveSettings({ quiet: { ...s.quiet, endMin: v } })}
@@ -164,42 +159,50 @@ export default function SettingsScreen() {
         )}
         <PermissionRow ok={perms.notifications} label="Notifications" />
         {!perms.notifications && (
-          <Button
-            title="Allow notifications"
-            variant="secondary"
-            onPress={async () => {
-              const ok = await requestNotificationPermission();
-              if (!ok) await Linking.openSettings();
-              perms.refresh();
-            }}
-          />
+          <CardBlock>
+            <Button
+              title="Allow notifications"
+              variant="secondary"
+              onPress={async () => {
+                await turnOnNotifications();
+                perms.refresh();
+              }}
+            />
+          </CardBlock>
         )}
         {needsExactAlarmPermission && (
           <>
             <PermissionRow ok={perms.exact} label="On-time reminders" />
             {!perms.exact && (
-              <>
+              <CardBlock>
                 <Text variant="small" soft>
                   Without this, reminders can arrive late when your phone is idle.
                 </Text>
                 <Button title="Allow on-time reminders" variant="secondary" onPress={() => void requestExactAlarms()} />
-              </>
+              </CardBlock>
             )}
           </>
         )}
-        <Button
-          title={testSent ? 'Sent. Lock your phone to see it.' : 'Send a test reminder'}
-          variant="secondary"
+        <ActionRow
+          label={
+            testSent === 'sent'
+              ? 'Sent. Lock your phone to see it.'
+              : testSent === 'failed'
+                ? "Couldn't send it. Try again."
+                : 'Send a test reminder'
+          }
           disabled={!perms.notifications}
           onPress={async () => {
-            await sendTestReminder(10);
-            setTestSent(true);
-            setTimeout(() => setTestSent(false), 10_000);
+            try {
+              await sendTestReminder(10);
+              setTestSent('sent');
+            } catch (e) {
+              console.warn('Could not send the test reminder', e);
+              setTestSent('failed');
+            }
+            setTimeout(() => setTestSent(null), 10_000);
           }}
         />
-        <Text variant="small" soft>
-          Arrives in 10 seconds.
-        </Text>
       </Card>
 
       <Text variant="small" soft center style={{ color: colors.inkSoft }}>
@@ -211,41 +214,10 @@ export default function SettingsScreen() {
 
 function PermissionRow({ ok, label }: { ok: boolean; label: string }) {
   const { colors } = useTheme();
-  return (
-    <View style={styles.permRow} accessible accessibilityLabel={`${label}: ${ok ? 'allowed' : 'not allowed'}`}>
-      <Text variant="body" style={styles.flex}>
-        {label}
-      </Text>
-      <Text variant="label" color={ok ? colors.ok : colors.warn}>
-        {ok ? '✓ Allowed' : '✕ Off'}
-      </Text>
-    </View>
-  );
-}
-
-function usePermissions() {
-  const [notifications, setNotifications] = useState(true);
-  const [exact, setExact] = useState(true);
-  const refresh = useCallback(() => {
-    canNotify().then(setNotifications).catch(() => {});
-    hasExactAlarms().then(setExact).catch(() => {});
-  }, []);
-  useFocusEffect(refresh);
-  useEffect(() => {
-    // Coming back from the system settings screen.
-    const sub = AppState.addEventListener('change', (st) => {
-      if (st === 'active') {
-        refresh();
-        void syncSchedule();
-      }
-    });
-    return () => sub.remove();
-  }, [refresh]);
-  return { notifications, exact, refresh };
+  return <StatusRow label={label} value={ok ? '✓ Allowed' : '✕ Off'} color={ok ? colors.ok : colors.warn} />;
 }
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   flex: { flex: 1, minWidth: 140 },
-  permRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, paddingVertical: 6 },
 });

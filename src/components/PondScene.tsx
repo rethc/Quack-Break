@@ -17,12 +17,13 @@ import { useTheme } from '@/theme';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
+// Out to the sides, over the reeds and open water: never near the duck's head and beak
+// (the duck stands in the middle, about x 120-250).
 const FIREFLIES = [
-  { x: 60, y: 110, d: 0 },
-  { x: 270, y: 115, d: 700 },
-  { x: 250, y: 150, d: 1500 },
-  { x: 95, y: 60, d: 2200 },
-  { x: 330, y: 135, d: 400 },
+  { x: 62, y: 128, d: 0 },
+  { x: 302, y: 122, d: 700 },
+  { x: 346, y: 170, d: 1500 },
+  { x: 92, y: 168, d: 2200 },
 ];
 
 function Firefly({ x, y, delay, color }: { x: number; y: number; delay: number; color: string }) {
@@ -46,18 +47,31 @@ function Firefly({ x, y, delay, color }: { x: number; y: number; delay: number; 
   );
 }
 
-export function PondScene({ height = 240, children }: { height?: number; children?: React.ReactNode }) {
+export function PondScene({
+  height = 240,
+  sky = true,
+  skyColor,
+  children,
+}: {
+  height?: number;
+  /** Moon and stars, or clouds. Off where the screen draws its own sky (Home). */
+  sky?: boolean;
+  /** The colour behind the scene, so the moon's crescent cut-out matches it. */
+  skyColor?: string;
+  children?: React.ReactNode;
+}) {
   const { colors, dark } = useTheme();
   return (
     <View style={[styles.wrap, { height }]}>
       <View style={StyleSheet.absoluteFill} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
         {/* Sky is pinned to the top and the pond to the bottom, so wide screens crop
             the middle instead of cutting off the moon. */}
+        {sky ? (
         <Svg style={StyleSheet.absoluteFill} viewBox="0 0 360 240" preserveAspectRatio="xMidYMin slice">
           {dark ? (
             <>
               <Circle cx={300} cy={36} r={18} fill={colors.moon} />
-              <Circle cx={307} cy={31} r={15} fill={colors.bg} opacity={0.9} />
+              <Circle cx={307} cy={31} r={15} fill={skyColor ?? colors.bg} opacity={0.9} />
               {[
                 [40, 30],
                 [120, 18],
@@ -80,6 +94,7 @@ export function PondScene({ height = 240, children }: { height?: number; childre
             </>
           )}
         </Svg>
+        ) : null}
         <Svg style={StyleSheet.absoluteFill} viewBox="0 0 360 240" preserveAspectRatio="xMidYMax slice">
           {/* pond */}
           <Ellipse cx={180} cy={196} rx={200} ry={46} fill={colors.pond} />

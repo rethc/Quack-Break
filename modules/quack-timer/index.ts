@@ -4,23 +4,32 @@ import { requireOptionalNativeModule } from 'expo';
 
 /** What the notification should show. Times are epoch milliseconds. */
 export type TimerPlan = {
+  /** Show the countdown notification (the tray timer setting). */
   enabled: boolean;
+  /** Reminders are stopped: show "Reminders stopped" with Resume instead of a countdown. */
+  paused: boolean;
   /** End of the running break, or 0. */
   breakEndsAt: number;
   /** Id of the booked "break over" notification, cancelled if the break is stopped early. */
   overId: string;
-  /** Upcoming reminder times. */
+  /** Upcoming reminder times. Also used to clear older reminders out of the tray. */
   reminders: number[];
+  /** When to run the JS sync in the background to book more reminders, or 0. */
+  refillAt: number;
   nextTitle: string;
   /** Shown when the next break is hours away; %s becomes the time. */
   nextAtTitle: string;
   breakTitle: string;
   stopLabel: string;
+  stoppedTitle: string;
+  stoppedText: string;
+  resumeLabel: string;
   channelName: string;
 };
 
-/** A Stop press on the notification: "stop" between breaks, "endBreak" during one. */
-export type TimerAction = { type: 'stop' | 'endBreak'; at: number };
+/** A button pressed on the notification: Stop between breaks, Stop during one, or Resume. */
+export type TimerAction = { type: 'stop' | 'endBreak' | 'resume'; at: number };
+const ACTION_TYPES: readonly string[] = ['stop', 'endBreak', 'resume'];
 
 type NativeTimer = {
   setPlan(json: string): void;
@@ -62,18 +71,21 @@ export function setTimerPlan(plan: TimerPlan) {
   }
 }
 
-/** Stop presses since last time. Each is returned once. */
+/** Buttons pressed since last time. Each is returned once. */
 export function takeTimerActions(): TimerAction[] {
   if (!native) return [];
   try {
     const list = JSON.parse(native.takeActions()) as TimerAction[];
-    return Array.isArray(list) ? list.filter((a) => a.type === 'stop' || a.type === 'endBreak') : [];
+    return Array.isArray(list) ? list.filter((a) => ACTION_TYPES.includes(a.type)) : [];
   } catch {
     return [];
   }
 }
 
-/** Called when Stop is pressed while the app is running. Returns an unsubscribe function. */
+/**
+ * Called while the app's JS is running when a notification button is pressed, or when the
+ * schedule should be topped up. Returns an unsubscribe function.
+ */
 export function onTimerAction(listener: () => void): () => void {
   const sub = native?.addListener('onAction', listener);
   return () => sub?.remove();

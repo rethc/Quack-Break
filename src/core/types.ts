@@ -49,6 +49,8 @@ export type TimerState = {
   breakEndsAt: number | null;
   /** Reminders are stopped until the user resumes them. */
   paused?: boolean;
+  /** The next reminder is a snooze the user asked for, so it rings even in quiet hours. */
+  snoozed?: boolean;
 };
 
 export type AppData = {
@@ -82,11 +84,23 @@ export const DEFAULT_SETTINGS: Settings = {
 
 type SavedSettings = Partial<Settings> & { sound?: boolean; startAlert?: OldAlertStyle; endAlert?: OldAlertStyle };
 
+const SOUND_IDS: readonly SoundId[] = ['quack', 'voice', 'chime', 'drop', 'bell', 'beep', 'phone', 'none'];
+const VOICE_IDS: readonly VoiceId[] = ['heart', 'bella', 'michael', 'george'];
+
+const oneOf = <T>(v: unknown, list: readonly T[], fallback: T): T => (list.includes(v as T) ? (v as T) : fallback);
+const bool = (v: unknown, fallback: boolean) => (typeof v === 'boolean' ? v : fallback);
+const minuteOfDay = (v: unknown, fallback: number) =>
+  typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < 24 * 60 ? v : fallback;
+const isTime = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0;
+
 const fromAlert = (a: OldAlertStyle) => ({ sound: (a === 'quack' ? 'quack' : 'none') as SoundId, vibrate: a !== 'silent' });
 
-/** Fill in saved settings from older versions of the app. */
+/**
+ * Settings from the saved file: fills in what older versions didn't have, and replaces anything
+ * that isn't a valid choice (a damaged file must never stop reminders, e.g. with workMin 0).
+ */
 export function settingsFrom(saved: unknown): Settings {
-  const raw: SavedSettings = { ...(saved as SavedSettings) };
+  const raw: SavedSettings = saved && typeof saved === 'object' ? { ...(saved as SavedSettings) } : {};
   // v0.1 had one sound switch and one vibration switch for everything.
   const v1: OldAlertStyle | undefined =
     raw.sound === undefined ? undefined : raw.sound ? 'quack' : raw.haptics === false ? 'silent' : 'vibrate';
@@ -95,15 +109,55 @@ export function settingsFrom(saved: unknown): Settings {
   delete raw.sound;
   delete raw.startAlert;
   delete raw.endAlert;
-  const s: Settings = {
-    ...DEFAULT_SETTINGS,
+  const merged: SavedSettings = {
     ...(oldStart && { startSound: fromAlert(oldStart).sound, startVibrate: fromAlert(oldStart).vibrate }),
     ...(oldEnd && { endSound: fromAlert(oldEnd).sound, endVibrate: fromAlert(oldEnd).vibrate }),
     ...raw,
-    quiet: { ...DEFAULT_SETTINGS.quiet, ...raw.quiet },
   };
-  if (raw.rule202020 === undefined) s.rule202020 = s.workMin === RULE_WORK_MIN && s.breakSec === RULE_BREAK_SEC;
-  return s;
+  const d = DEFAULT_SETTINGS;
+  const workMin = oneOf(merged.workMin, WORK_CHOICES, d.workMin);
+  const breakSec = oneOf(merged.breakSec, BREAK_CHOICES, d.breakSec);
+  const rule202020 = bool(merged.rule202020, workMin === RULE_WORK_MIN && breakSec === RULE_BREAK_SEC);
+  const q: Partial<QuietHours> = merged.quiet && typeof merged.quiet === 'object' ? merged.quiet : {};
+  let startMin = minuteOfDay(q.startMin, d.quiet.startMin);
+  let endMin = minuteOfDay(q.endMin, d.quiet.endMin);
+  // The same start and end would mean no quiet hours while the switch says on.
+  if (startMin === endMin) [startMin, endMin] = [d.quiet.startMin, d.quiet.endMin];
+  return {
+    rule202020,
+    workMin: rule202020 ? RULE_WORK_MIN : workMin,
+    breakSec: rule202020 ? RULE_BREAK_SEC : breakSec,
+    snoozeMin: oneOf(merged.snoozeMin, SNOOZE_CHOICES, d.snoozeMin),
+    quiet: { enabled: bool(q.enabled, d.quiet.enabled), startMin, endMin },
+    startSound: oneOf(merged.startSound, SOUND_IDS, d.startSound),
+    startVibrate: bool(merged.startVibrate, d.startVibrate),
+    endSound: oneOf(merged.endSound, SOUND_IDS, d.endSound),
+    endVibrate: bool(merged.endVibrate, d.endVibrate),
+    voice: oneOf(merged.voice, VOICE_IDS, d.voice),
+    haptics: bool(merged.haptics, d.haptics),
+    trayTimer: bool(merged.trayTimer, d.trayTimer),
+  };
+}
+
+/**
+ * The timer from the saved file, checked against the clock. If the clock went back (set by
+ * hand, or a bad network time), saved times can sit far in the future, which would show a
+ * break running for hours or push the next reminder out by a day. Nothing the app sets is more
+ * than one break length ahead, so anything further is reset to now.
+ */
+export function timerFrom(saved: unknown, settings: Settings, now: number): TimerState {
+  const raw: Partial<TimerState> = saved && typeof saved === 'object' ? (saved as Partial<TimerState>) : {};
+  const ahead = now + settings.breakSec * 1000 + 5_000;
+  const breakEndsAt = isTime(raw.breakEndsAt) && raw.breakEndsAt <= ahead ? raw.breakEndsAt : null;
+  const anchorOk = isTime(raw.anchor) && raw.anchor <= ahead;
+  const t: TimerState = {
+    anchor: anchorOk ? (raw.anchor as number) : now,
+    setAt: anchorOk && isTime(raw.setAt) ? Math.min(raw.setAt, now) : now,
+    breakEndsAt,
+  };
+  if (raw.paused === true) t.paused = true;
+  if (raw.snoozed === true && anchorOk) t.snoozed = true;
+  return t;
 }
 
 export function defaultData(now: number): AppData {

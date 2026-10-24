@@ -25,6 +25,21 @@ const light = {
   moon: '#FFF4D6',
   firefly: '#FFF2A8',
   star: '#FFFFFF',
+  // Home sky, list dividers, the quieter break screen.
+  heroSky: '#E6F4FA',
+  line: '#F1E3C0',
+  calm: '#FFF8E7',
+  // The sky clock: the sun's path so far, the rest of it, the sun.
+  arc: '#E9B52E',
+  arcRest: '#5E5677',
+  sun: '#FFD54F',
+  sunGlow: '#FFE9A3',
+  // Break ring (needs 3:1 against the background).
+  ring: '#A87A12',
+  ringTrack: '#F1E3C0',
+  // Switch tracks (3:1 against the card).
+  switchOn: '#A87A12',
+  switchOff: '#8F88A6',
 };
 
 export type Colors = typeof light;
@@ -53,6 +68,17 @@ const dark: Colors = {
   moon: '#FFF4D6',
   firefly: '#FFF2A8',
   star: '#FFFFFF',
+  heroSky: '#182340',
+  line: '#2A3656',
+  calm: '#0E1424',
+  arc: '#FFF4D6',
+  arcRest: '#B9B3CC',
+  sun: '#FFD54F',
+  sunGlow: '#FFE9A3',
+  ring: '#FFD54F',
+  ringTrack: '#1F3558',
+  switchOn: '#C99A1E',
+  switchOff: '#75708F',
 };
 
 /** Embedded at build time by the expo-font config plugin (see app.json). */

@@ -1,22 +1,75 @@
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
 
-import { radius, useTheme } from '@/theme';
+import { useTheme } from '@/theme';
 
 import { ChevronIcon } from './Icons';
-
 import { Text } from './Text';
 
+/**
+ * A settings group: its name above, then a flat card of rows with thin dividers. Only buttons
+ * get the chunky raised edge, so a group never looks pressable.
+ */
 export function Card({ children, title }: { children: React.ReactNode; title?: string }) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderBottomColor: colors.cardEdge }]}>
+    <View style={styles.section}>
       {title ? (
-        <Text variant="heading" accessibilityRole="header">
+        <Text variant="label" color={colors.inkSoft} accessibilityRole="header" style={styles.sectionTitle}>
           {title}
         </Text>
       ) : null}
-      {children}
+      <View style={[styles.card, { backgroundColor: colors.card }]}>
+        {/* Rows draw a divider under themselves; this pulls the last one out of sight. */}
+        <View style={styles.cardInner}>{children}</View>
+      </View>
     </View>
+  );
+}
+
+/** Text or buttons inside a group that aren't a row. */
+export function CardBlock({ children }: { children: React.ReactNode }) {
+  const { colors } = useTheme();
+  return (
+    <View style={styles.block}>
+      {children}
+      <View style={[styles.divider, { backgroundColor: colors.line }]} />
+    </View>
+  );
+}
+
+/** A label with a status on the right, e.g. "Notifications: Allowed". */
+export function StatusRow({ label, value, color }: { label: string; value: string; color: string }) {
+  const { colors } = useTheme();
+  return (
+    <View style={styles.row} accessible accessibilityLabel={`${label}: ${value}`}>
+      <Text variant="body" style={styles.flex}>
+        {label}
+      </Text>
+      <Text variant="label" color={color}>
+        {value}
+      </Text>
+      <View style={[styles.divider, { backgroundColor: colors.line }]} />
+    </View>
+  );
+}
+
+/** A row that is a text button, e.g. "Send a test reminder". */
+export function ActionRow({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }, disabled && { opacity: 0.45 }]}
+    >
+      <Text variant="label" color={colors.accentText} style={styles.flex}>
+        {label}
+      </Text>
+      <View style={[styles.divider, { backgroundColor: colors.line }]} />
+    </Pressable>
   );
 }
 
@@ -63,7 +116,7 @@ export function Stepper<T>({
         </Text>
         <StepButton symbol="+" disabled={next === undefined} onPress={() => step(1)} />
       </View>
-      <View style={[styles.divider, { backgroundColor: colors.cardEdge }]} />
+      <View style={[styles.divider, { backgroundColor: colors.line }]} />
     </View>
   );
 }
@@ -78,8 +131,8 @@ function StepButton({ symbol, disabled, onPress }: { symbol: string; disabled: b
       importantForAccessibility="no"
       style={({ pressed }) => [
         styles.stepBtn,
-        { backgroundColor: colors.secondary, borderBottomColor: colors.secondaryEdge },
-        pressed && { transform: [{ translateY: 2 }], borderBottomWidth: 1 },
+        { backgroundColor: colors.secondary },
+        pressed && { opacity: 0.7 },
         disabled && { opacity: 0.35 },
       ]}
     >
@@ -127,10 +180,10 @@ export function ToggleRow({
           onValueChange={onChange}
           importantForAccessibility="no-hide-descendants"
           accessibilityElementsHidden
-          trackColor={{ true: colors.primaryEdge, false: colors.pondLight }}
-          // Off: a light knob in dark mode, so the switch is visible on the dark card.
+          // Track colours stand out 3:1 from the card, on and off.
+          trackColor={{ true: colors.switchOn, false: colors.switchOff }}
           thumbColor={value ? colors.primary : dark ? colors.inkSoft : colors.card}
-          ios_backgroundColor={colors.pondLight}
+          ios_backgroundColor={colors.switchOff}
         />
       </View>
       {hint ? (
@@ -138,7 +191,7 @@ export function ToggleRow({
           {hint}
         </Text>
       ) : null}
-      <View style={[styles.divider, { backgroundColor: colors.cardEdge }]} />
+      <View style={[styles.divider, { backgroundColor: colors.line }]} />
     </Pressable>
   );
 }
@@ -191,7 +244,7 @@ export function ChoiceRow<T extends string>({
           );
         })}
       </View>
-      <View style={[styles.divider, { backgroundColor: colors.cardEdge }]} />
+      <View style={[styles.divider, { backgroundColor: colors.line }]} />
     </View>
   );
 }
@@ -213,7 +266,7 @@ export function LinkRow({ label, value, onPress }: { label: string; value: strin
         {value}
       </Text>
       <ChevronIcon color={colors.inkSoft} />
-      <View style={[styles.divider, { backgroundColor: colors.cardEdge }]} />
+      <View style={[styles.divider, { backgroundColor: colors.line }]} />
     </Pressable>
   );
 }
@@ -235,32 +288,29 @@ export function RadioRow({ label, selected, onPress }: { label: string; selected
       <Text variant={selected ? 'label' : 'body'} style={styles.flex}>
         {label}
       </Text>
-      <View style={[styles.divider, { backgroundColor: colors.cardEdge }]} />
+      <View style={[styles.divider, { backgroundColor: colors.line }]} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: radius.l, borderBottomWidth: 5, padding: 18, gap: 4 },
-  row: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10, paddingVertical: 10 },
+  section: { gap: 8 },
+  sectionTitle: { marginLeft: 16 },
+  card: { borderRadius: 22, paddingHorizontal: 16, overflow: 'hidden' },
+  cardInner: { marginBottom: -1 },
+  block: { gap: 10, paddingVertical: 14 },
+  row: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10, paddingVertical: 14, minHeight: 56 },
   flex: { flex: 1, minWidth: 140 },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  value: { minWidth: 76 },
-  stepBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    borderBottomWidth: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  toggleRow: { gap: 2, paddingVertical: 10 },
+  value: { minWidth: 84 },
+  stepBtn: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  toggleRow: { gap: 2, paddingVertical: 14 },
   radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
   radioDot: { width: 12, height: 12, borderRadius: 6 },
   toggleTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  choiceRow: { gap: 8, paddingVertical: 10 },
+  choiceRow: { gap: 8, paddingVertical: 14 },
   segment: { flexDirection: 'row', borderRadius: 16, padding: 4, gap: 4 },
   grid: { flexWrap: 'wrap' },
-  segmentItem: { flex: 1, minHeight: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  divider: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 1, opacity: 0.6 },
+  segmentItem: { flex: 1, minHeight: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  divider: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 1 },
 });

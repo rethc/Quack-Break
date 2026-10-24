@@ -2,8 +2,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { planNotifications, MAX_REMINDERS } from './notificationPlan.ts';
-import { dayKey, HOUR, isQuiet, MINUTE, planBreaks } from './schedule.ts';
+import { MAX_REMINDERS, MAX_REMINDERS_ANDROID, OUT_TITLE, planNotifications } from './notificationPlan.ts';
+import { dayKey, HOUR, isQuiet, planBreaks } from './schedule.ts';
 import {
   breaksOn,
   finishBreakIfDone,
@@ -13,9 +13,10 @@ import {
   snooze,
   startBreak,
   stopReminders,
+  updateSettings,
 } from './transitions.ts';
 import { soundFile } from './sounds.ts';
-import { DEFAULT_SETTINGS, defaultData, settingsFrom, type Settings, type TimerState } from './types.ts';
+import { DEFAULT_SETTINGS, defaultData, settingsFrom, timerFrom, type Settings, type TimerState } from './types.ts';
 
 const at = (h: number, m = 0, day = 22) => new Date(2026, 9, day, h, m).getTime();
 const noQuiet: Settings = { ...DEFAULT_SETTINGS, quiet: { enabled: false, startMin: 0, endMin: 0 } };
@@ -230,4 +231,112 @@ describe('soundFile', () => {
   });
 });
 
-void MINUTE;
+describe('breaks taken from the notification', () => {
+  const ready = { ...finishOnboarding(defaultData(at(9)), at(9)), settings: noQuiet };
+
+  it('counts a finished break when the next one starts, without the app opening in between', () => {
+    const first = startBreak(ready, at(10));
+    const second = startBreak(first, at(10, 20));
+    assert.equal(breaksOn(second, at(10)), 1);
+    const third = startBreak(second, at(10, 40));
+    assert.equal(breaksOn(third, at(10)), 2);
+  });
+
+  it('counts a finished break before a snooze, skip, stop or resume', () => {
+    const done = startBreak(ready, at(10));
+    for (const next of [snooze, skipBreak, stopReminders, resumeReminders]) {
+      assert.equal(breaksOn(next(done, at(10, 20)), at(10)), 1, next.name);
+    }
+  });
+
+  it('does not count a break that was ended early', () => {
+    assert.equal(breaksOn(skipBreak(startBreak(ready, at(10)), at(10) + 5_000), at(10)), 0);
+  });
+});
+
+describe('edge cases', () => {
+  const night = { enabled: true, startMin: 22 * 60, endMin: 8 * 60 };
+  const ready = { ...finishOnboarding(defaultData(at(9)), at(9)), settings: { ...DEFAULT_SETTINGS, quiet: night } };
+
+  it('lets a snooze ring even when it lands in quiet hours', () => {
+    const d = snooze(ready, at(21, 58));
+    const p = planBreaks(at(21, 58), d.settings, d.timer, { max: 2 });
+    assert.deepEqual(p.reminders.map(hm), ['22 22:03', '23 08:20']);
+    assert.equal(planBreaks(at(22, 4), d.settings, d.timer).overdue, true);
+  });
+
+  it('keeps reminders stopped through a break taken by hand', () => {
+    const stopped = stopReminders(ready, at(10));
+    const d = startBreak(stopped, at(11));
+    assert.equal(d.timer.paused, true);
+    assert.deepEqual(planBreaks(at(11), d.settings, d.timer).reminders, []);
+    assert.equal(planNotifications(d, at(11)).filter((n) => n.kind === 'over').length, 1);
+  });
+
+  it('counts a new reminder interval from now', () => {
+    const d = updateSettings({ ...ready, settings: { ...ready.settings, rule202020: false, workMin: 60 } }, { workMin: 10 }, at(10));
+    const p = planBreaks(at(10), d.settings, d.timer, { max: 1 });
+    assert.equal(p.overdue, false);
+    assert.equal(p.reminders[0], at(10, 10));
+    const same = updateSettings(d, { haptics: false }, at(10, 5));
+    assert.equal(same.timer, d.timer);
+  });
+});
+
+describe('damaged or old saved data', () => {
+  it('replaces invalid settings with defaults', () => {
+    const s = settingsFrom({
+      rule202020: false,
+      workMin: 0,
+      breakSec: 'x',
+      snoozeMin: -1,
+      startSound: 'trumpet',
+      voice: 'robot',
+      quiet: { enabled: true, startMin: 600, endMin: 600 },
+      extra: 1,
+    });
+    assert.equal(s.workMin, DEFAULT_SETTINGS.workMin);
+    assert.equal(s.breakSec, DEFAULT_SETTINGS.breakSec);
+    assert.equal(s.snoozeMin, DEFAULT_SETTINGS.snoozeMin);
+    assert.equal(s.startSound, DEFAULT_SETTINGS.startSound);
+    assert.equal(s.voice, DEFAULT_SETTINGS.voice);
+    assert.notEqual(s.quiet.startMin, s.quiet.endMin);
+    assert.equal('extra' in s, false);
+    assert.deepEqual(settingsFrom(null), DEFAULT_SETTINGS);
+  });
+
+  it('resets times left in the future by a clock that went back', () => {
+    const now = at(10);
+    const t = timerFrom({ anchor: now + 24 * HOUR, setAt: now + 24 * HOUR, breakEndsAt: now + 24 * HOUR }, DEFAULT_SETTINGS, now);
+    assert.deepEqual(t, { anchor: now, setAt: now, breakEndsAt: null });
+    const running = timerFrom({ anchor: now + 10_000, setAt: now - 10_000, breakEndsAt: now + 10_000 }, DEFAULT_SETTINGS, now);
+    assert.equal(running.breakEndsAt, now + 10_000);
+    assert.deepEqual(timerFrom('junk', DEFAULT_SETTINGS, now), { anchor: now, setAt: now, breakEndsAt: null });
+  });
+});
+
+describe('running out of booked reminders', () => {
+  const night = { enabled: true, startMin: 22 * 60, endMin: 8 * 60 };
+
+  it('books a last call after the final reminder, outside quiet hours', () => {
+    const d = { ...finishOnboarding(defaultData(at(9)), at(9)), settings: { ...DEFAULT_SETTINGS, quiet: night } };
+    const plan = planNotifications(d, at(9));
+    const due = plan.filter((n) => n.kind === 'due');
+    const out = plan.filter((n) => n.kind === 'out');
+    assert.equal(out.length, 1);
+    assert.equal(out[0]!.title, OUT_TITLE);
+    assert.ok(out[0]!.at > due[due.length - 1]!.at);
+    assert.equal(isQuiet(out[0]!.at, night), false);
+  });
+
+  it('books further ahead on Android', () => {
+    const d = { ...finishOnboarding(defaultData(at(9)), at(9)), settings: { ...noQuiet, rule202020: false, workMin: 5 } };
+    const plan = planNotifications(d, at(9), MAX_REMINDERS_ANDROID);
+    assert.equal(plan.filter((n) => n.kind === 'due').length, MAX_REMINDERS_ANDROID);
+  });
+
+  it('plans no last call while reminders are stopped', () => {
+    const d = stopReminders(finishOnboarding(defaultData(at(9)), at(9)), at(10));
+    assert.deepEqual(planNotifications(d, at(10)), []);
+  });
+});

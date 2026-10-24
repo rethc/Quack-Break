@@ -1,6 +1,7 @@
 package expo.modules.quacktimer
 
 import android.content.Context
+import android.os.Bundle
 import android.os.ResultReceiver
 import android.util.Log
 
@@ -13,6 +14,7 @@ import android.util.Log
 object ExpoNotificationsBridge {
   private const val TAG = "QuackTimer"
   private const val SERVICE = "expo.modules.notifications.service.NotificationsService"
+  private const val MESSAGING = "expo.modules.notifications.service.delegates.FirebaseMessagingDelegate"
 
   private val companion: Any? by lazy {
     runCatching { Class.forName(SERVICE).getField("Companion").get(null) }
@@ -28,6 +30,20 @@ object ExpoNotificationsBridge {
         .getMethod("removeAllScheduledNotifications", Context::class.java, ResultReceiver::class.java)
         .invoke(c, context, null)
     }.onFailure { Log.w(TAG, "Could not cancel booked notifications", it) }
+  }
+
+  /**
+   * Run the app's notification background task (src/services/backgroundTask.ts) with `data`,
+   * starting the JS headless if the app isn't running. This is what expo-notifications does
+   * for a button pressed with the app closed.
+   */
+  fun runBackgroundTask(context: Context, data: Bundle) {
+    runCatching {
+      val c = Class.forName(MESSAGING).getField("Companion").get(null)
+      c.javaClass
+        .getMethod("runTaskManagerTasks", Context::class.java, Bundle::class.java)
+        .invoke(c, context.applicationContext, data)
+    }.onFailure { Log.w(TAG, "Could not run the background sync", it) }
   }
 
   /** Cancel the booked notifications with these ids. */

@@ -68,15 +68,17 @@ export function planBreaks(
   opts: { max?: number; horizonMs?: number } = {},
 ): BreakPlan {
   const max = opts.max ?? 60;
-  const horizon = now + (opts.horizonMs ?? 48 * HOUR);
+  const horizon = now + (opts.horizonMs ?? 8 * 24 * HOUR);
   const work = settings.workMin * MINUTE;
   const q = settings.quiet;
   const quietNow = isQuiet(now, q);
   const breakActive = timer.breakEndsAt !== null && timer.breakEndsAt > now;
   const start = cadenceStart(now, timer, q);
   const dueAt = start + work;
-  if (timer.paused && !breakActive) return { overdue: false, quietNow, breakActive, dueAt, reminders: [] };
-  const overdue = !quietNow && !breakActive && now >= dueAt;
+  if (timer.paused) return { overdue: false, quietNow, breakActive, dueAt, reminders: [] };
+  // A snooze the user asked for rings even if it lands in quiet hours.
+  const snoozedRing = (t: number) => !!timer.snoozed && t === dueAt;
+  const overdue = !breakActive && now >= dueAt && (!quietNow || snoozedRing(dueAt));
 
   // First reminder strictly in the future.
   let next = dueAt;
@@ -84,7 +86,7 @@ export function planBreaks(
 
   const reminders: number[] = [];
   for (let guard = 0; reminders.length < max && next <= horizon && guard < 5000; guard++) {
-    if (isQuiet(next, q)) {
+    if (isQuiet(next, q) && !snoozedRing(next)) {
       next = nextQuietEnd(next, q) + work;
       continue;
     }

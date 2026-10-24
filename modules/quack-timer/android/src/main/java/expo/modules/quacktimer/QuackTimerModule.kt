@@ -9,17 +9,21 @@ class QuackTimerModule : Module() {
   private val context: Context
     get() = appContext.reactContext ?: throw Exceptions.ReactContextLost()
 
+  private val listener: () -> Unit = { sendEvent("onAction", emptyMap<String, Any>()) }
+
   override fun definition() = ModuleDefinition {
     Name("QuackTimer")
 
     Events("onAction")
 
     OnCreate {
-      TimerEvents.listener = { this@QuackTimerModule.sendEvent("onAction", emptyMap<String, Any>()) }
+      TimerEvents.listener = listener
     }
 
     OnDestroy {
-      TimerEvents.listener = null
+      // A reload creates the new module before destroying the old one; keep the new listener.
+      if (TimerEvents.listener === listener) TimerEvents.listener = null
+      SoundPreview.stop()
     }
 
     /** Saves the plan (JSON, see TimerPlan) and updates the notification right away. */
