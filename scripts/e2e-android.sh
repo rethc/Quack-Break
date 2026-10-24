@@ -126,6 +126,25 @@ labels() {
 }
 # True if some text or label on screen contains $1.
 on_screen() { dump && labels | grep -qF -- "$1"; }
+# For brief states (a 2.6 s reaction on Home): any single reading counts, without waiting for the
+# screen to settle, which can take most of that time.
+glimpse() { # text timeout_s
+  local end=$((SECONDS + ${2:-3}))
+  while [ $SECONDS -lt $end ]; do
+    if [ "$QUICK_DUMP" = 1 ]; then quick_read >"$OUT/ui.xml"; else raw_dump; fi
+    labels | grep -qF -- "$1" && return 0
+  done
+  return 1
+}
+# Android cancels alarms a moment after the app asks (the Stop runs in the background).
+alarms_cleared() { # timeout_s
+  local end=$((SECONDS + ${1:-20}))
+  while [ $SECONDS -lt $end ]; do
+    [ "$(alarm_count)" -eq 0 ] && return 0
+    sleep 1
+  done
+  return 1
+}
 wait_for() { # text timeout_s
   local end=$((SECONDS + ${2:-15}))
   while [ $SECONDS -lt $end ]; do on_screen "$1" && return 0; sleep 1; done
@@ -456,14 +475,14 @@ open_app
 check "home: break time" wait_for "Break time" 10
 check "home: start break" on_screen "Start break"
 tap "Snooze 5 min"
-check "home: snooze reaction" wait_for "Okay. I'll remind you in 5 minutes." 3
+check "home: snooze reaction" glimpse "Okay. I'll remind you in 5 minutes." 3
 check "home: next break in 5 min" wait_for "5 min" 5
 check "snooze saved" eq "$(state_js 'd.timer.snoozed===true')" true
 close_app
 setstate 'd.timer.anchor=Date.now()-25*60e3; d.timer.setAt=d.timer.anchor; delete d.timer.snoozed'
 open_app
 tap "Skip"
-check "home: duck shrugs after a skip" wait_for "shrugs" 3
+check "home: duck shrugs after a skip" glimpse "shrugs" 3
 check "home: next break in 20 min after skip" wait_for "20 min" 5
 
 # ---------- 7. Quiet hours ----------
@@ -488,8 +507,7 @@ xy=$(tray_action "Stop")
 check "tray: stop button shown" test -n "$xy"
 # shellcheck disable=SC2086
 [ -n "$xy" ] && a shell input tap $xy
-sleep 4
-check "tray: stop cancels every reminder" eq "$(alarm_count)" 0
+check "tray: stop cancels every reminder" alarms_cleared 20
 check "tray: says reminders stopped" tray_has "Reminders stopped"
 a shell am kill $P
 xy=$(tray_action "Resume")
