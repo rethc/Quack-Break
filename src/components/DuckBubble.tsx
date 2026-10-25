@@ -5,45 +5,37 @@ import { useTheme } from '@/theme';
 import { Text } from './Text';
 
 /**
- * A small speech bubble beside the duck, tail pointing down-left at it. The bubble is placed by
- * its right edge and grows to the left, so longer lines stay on one line; `tailFromRight` keeps
- * the tail over the duck's head however wide the bubble gets.
+ * What the duck is saying, in a small dark bubble with a tail pointing straight down at it. The
+ * bubble is centred in `style`'s box and only as wide as its text: a short line gets a short
+ * bubble, a long one wraps.
  */
-export function DuckBubble({
-  text,
-  style,
-  tailFromRight = 0,
-}: {
-  text: string;
-  style?: ViewStyle;
-  tailFromRight?: number;
-}) {
+export function DuckBubble({ text, style }: { text: string; style?: ViewStyle }) {
   const { colors } = useTheme();
   return (
     <View style={[styles.wrap, style]}>
-      <View style={[styles.bubble, { backgroundColor: colors.ink, minWidth: tailFromRight + TAIL_W + 22 }]}>
+      <View style={[styles.bubble, { backgroundColor: colors.ink }]}>
         {/* The duck's chatter grows less than the rest with large text, so it never covers the scene. */}
-        <Text variant="label" color={colors.bg} style={styles.text} maxFontSizeMultiplier={1.3}>
+        <Text variant="label" color={colors.bg} center style={styles.text} maxFontSizeMultiplier={1.3}>
           {text}
         </Text>
       </View>
-      <View style={[styles.tail, { borderTopColor: colors.ink, marginRight: tailFromRight }]} />
+      <View style={[styles.tail, { borderTopColor: colors.ink }]} />
     </View>
   );
 }
 
-const TAIL_W = 18;
-
 const styles = StyleSheet.create({
-  wrap: { alignItems: 'flex-end' },
+  wrap: { alignItems: 'center' },
   bubble: { borderRadius: 18, paddingVertical: 10, paddingHorizontal: 14 },
   text: { fontSize: 15, lineHeight: 20 },
   tail: {
     width: 0,
     height: 0,
     marginTop: -1,
-    borderTopWidth: 14,
-    borderRightWidth: TAIL_W,
+    borderTopWidth: 12,
+    borderLeftWidth: 9,
+    borderRightWidth: 9,
+    borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
   },
 });

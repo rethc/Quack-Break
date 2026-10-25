@@ -156,10 +156,9 @@ function HomeScreen() {
   const statusHeight = Math.max(0, skyH - duckClear - (showBubble ? BUBBLE_H : 0) - 12 - STATUS_TOP);
   // The arc's ends sit above the reed tops, so the sun or moon is never half hidden.
   const arcBase = skyH - POND_H * 0.4 - 70;
-  // The bubble ends short of the arc's right leg and grows left; its tail points at the duck's head.
-  // Far enough in that the sun or moon, resting at the end of its arc, never touches it.
-  const BUBBLE_RIGHT = 60;
-  const bubbleTail = area.w / 2 - BUBBLE_RIGHT - 28;
+  // The bubble is centred over the duck, with the same room at both sides: enough that the sun
+  // or moon, resting at the end of its arc, never touches even a long line.
+  const BUBBLE_SIDE = 60;
 
   const start = () => {
     haptic.tap();
@@ -256,8 +255,7 @@ function HomeScreen() {
           {showBubble && (
             <DuckBubble
               text={reaction?.line ?? line}
-              tailFromRight={bubbleTail}
-              style={{ ...styles.bubble, bottom: duckClear, right: BUBBLE_RIGHT, maxWidth: area.w - BUBBLE_RIGHT - 24 }}
+              style={{ ...styles.bubble, bottom: duckClear, left: BUBBLE_SIDE, right: BUBBLE_SIDE }}
             />
           )}
         </View>

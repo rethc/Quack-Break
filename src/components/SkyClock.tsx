@@ -67,11 +67,14 @@ export function SkyClock({ width, height, progress, baseY, topY }: Props) {
     ahead = `M ${bx} ${by} A ${arc} ${cx + rx} ${baseY}`;
   }
 
+  // Nothing is drawn below the arc's ends plus the sun's glow, so the SVG (a bitmap of its own size)
+  // stops there instead of covering the whole panel.
+  const drawnH = Math.min(height, baseY + 26);
   return (
     <Svg
       width={width}
-      height={height}
-      style={StyleSheet.absoluteFill}
+      height={drawnH}
+      style={styles.sky}
       importantForAccessibility="no-hide-descendants"
       accessibilityElementsHidden
     >
@@ -122,3 +125,7 @@ export function SkyClock({ width, height, progress, baseY, topY }: Props) {
     </Svg>
   );
 }
+
+const styles = StyleSheet.create({
+  sky: { position: 'absolute', top: 0, left: 0 },
+});
