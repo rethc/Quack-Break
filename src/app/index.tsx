@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { Duck, ENTER_MS, type DuckMode } from '@/components/duck/Duck';
+import { BEAK_FROM_CENTRE } from '@/components/duck/shapes';
 import { GearIcon, IconButton } from '@/components/Icons';
 import { DuckBubble } from '@/components/DuckBubble';
 import { PondProgress, STAGE_SCALE } from '@/components/pond/PondProgress';
@@ -157,7 +158,7 @@ function HomeScreen() {
   // The arc's ends sit above the reed tops, so the sun or moon is never half hidden.
   const arcBase = skyH - POND_H * 0.4 - 70;
   // The bubble is centred over the duck, with the same room at both sides: enough that the sun
-  // or moon, resting at the end of its arc, never touches even a long line.
+  // or moon, resting at the end of its arc, never touches even a long line. Its tail sits over the beak.
   const BUBBLE_SIDE = 60;
 
   const start = () => {
@@ -255,6 +256,7 @@ function HomeScreen() {
           {showBubble && (
             <DuckBubble
               text={reaction?.line ?? line}
+              tailOffset={Math.round(duckSize * BEAK_FROM_CENTRE)}
               style={{ ...styles.bubble, bottom: duckClear, left: BUBBLE_SIDE, right: BUBBLE_SIDE }}
             />
           )}

@@ -16,6 +16,9 @@ export const duckColors = {
   scarf: '#E5677F',
 };
 
+/** The middle of the beak (x 153 to 187), as a share of the duck's width to the right of its centre line. */
+export const BEAK_FROM_CENTRE = (170 - 100) / 200;
+
 export const duckPaths = {
   footBack:
     'M106 158 L106 174 Q106 178 102 179 L94 183 Q90 186 95 188 L124 188 Q129 187 126 183 L118 178 Q115 176 115 172 L115 158 Z',
