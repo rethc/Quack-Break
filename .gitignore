@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Native build output of the local Expo modules (from a local Gradle build)
+modules/*/android/build/
+modules/*/android/.cxx/

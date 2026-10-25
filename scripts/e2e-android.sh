@@ -549,7 +549,7 @@ check "pond: opens" wait_for "Found so far" 5
 check "pond: young duck" on_screen "Young duck"
 check "pond: 95 breaks" on_screen "95 breaks so far"
 check "pond: next stage" on_screen "Grown duck at 250 breaks"
-check "pond: 8 of 12 found" on_screen "8 of 12"
+check "pond: 8 of 13 found" on_screen "8 of 13"
 check "pond: beanie worn" on_screen "Beanie. Wearing. Tap to take it off."
 check "pond: bow can be worn" on_screen "Bow. Tap to wear it."
 check "pond: snail locked" on_screen "Snail. Locked. Unlocks at 100 breaks."
@@ -563,7 +563,8 @@ check "pond: nothing worn" eq "$(state_js d.pond.wearing)" null
 tap "Your duck's name"
 sleep 1
 a shell input keyevent KEYCODE_MOVE_END
-for i in 1 2 3 4; do a shell input keyevent KEYCODE_DEL; done
+# Clear the whole name, whatever its length (names are at most 20 characters).
+for i in $(seq 24); do a shell input keyevent KEYCODE_DEL; done
 type_slowly "Quackers"
 a shell input keyevent 66
 sleep 1
@@ -572,7 +573,7 @@ check "pond: renamed" eq "$(state_js d.pond.name)" '"Quackers"'
 tap "Your duck's name"
 sleep 1
 a shell input keyevent KEYCODE_MOVE_END
-for i in 1 2 3 4 5 6 7 8; do a shell input keyevent KEYCODE_DEL; done
+for i in $(seq 24); do a shell input keyevent KEYCODE_DEL; done
 type_slowly "Waddles"
 sleep 1
 check "pond: back to Home" back_to_home

@@ -104,7 +104,8 @@ export default function BreakScreen() {
     () => ({ running: pickFresh(breakLines), done: pickFresh(doneLines), skipped: pickFresh(skipLines) }),
     [],
   );
-  const mode: DuckMode = phase === 'done' ? 'flap' : phase === 'skipped' ? 'shrug' : entered ? 'idle' : 'enter';
+  // The duck walks in, then sits down and rests its eyes along with you.
+  const mode: DuckMode = phase === 'done' ? 'flap' : phase === 'skipped' ? 'shrug' : entered ? 'rest' : 'enter';
   // Ring target is where it will be at the end of this second, so it moves smoothly.
   const progress = Math.min(1, Math.max(0, 1 - (secondsLeft - 1) / breakSec));
   const today = days[dayKey(now)] ?? 0;
@@ -123,7 +124,6 @@ export default function BreakScreen() {
         <Duck
           mode={mode}
           size={Math.round(138 * STAGE_SCALE[stage.id])}
-          stage={stage.id}
           wearing={pond.wearing}
           who={describeDuck(pond)}
         />
@@ -202,7 +202,7 @@ function Unlocked({ unlocks, duckName }: { unlocks: ReturnType<typeof unlocksBet
         accessibilityElementsHidden
       >
         {stage ? (
-          <Duck mode="idle" size={56} stage={stage.id} />
+          <Duck mode="idle" size={56} />
         ) : (
           <ItemArt id={first!.id} size={48} behind={colors.heroSky} />
         )}

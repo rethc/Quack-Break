@@ -59,6 +59,7 @@ const EXPECTED_ITEMS: [ItemId, number, 'pond' | 'wear'][] = [
   ['stones', 125, 'pond'],
   ['goldfish', 150, 'pond'],
   ['scarf', 180, 'wear'],
+  ['glasses', 220, 'wear'],
 ];
 
 /** Every break count where something unlocks (plus 0), in order. */
@@ -96,7 +97,7 @@ describe('growth stages', () => {
 });
 
 describe('items', () => {
-  it('has the 12 items in unlock order', () => {
+  it('has the 13 items in unlock order', () => {
     assert.deepEqual(
       ITEMS.map((i) => [i.id, i.at, i.kind]),
       EXPECTED_ITEMS,
@@ -118,11 +119,11 @@ describe('items', () => {
     });
   }
 
-  it('has nothing unlocked at the start and everything at 180', () => {
+  it('has nothing unlocked at the start and everything at 220', () => {
     assert.deepEqual(unlockedItems(0), []);
     assert.equal(nextItem(0)?.id, 'lilypad');
-    assert.deepEqual(ids(unlockedItems(180)), ids(ITEMS));
-    assert.equal(nextItem(180), null);
+    assert.deepEqual(ids(unlockedItems(220)), ids(ITEMS));
+    assert.equal(nextItem(220), null);
     assert.equal(nextItem(10_000), null);
   });
 });
@@ -438,7 +439,8 @@ describe('unlocksBetween', () => {
 
   it('finds nothing for breaks that unlock nothing', () => {
     assert.deepEqual(unlocksBetween(0, 4), none);
-    assert.deepEqual(unlocksBetween(181, 249), none);
+    assert.deepEqual(unlocksBetween(181, 219), none);
+    assert.deepEqual(unlocksBetween(221, 249), none);
   });
 
   it('does not report being a duckling as new', () => {
@@ -454,7 +456,7 @@ describe('unlocksBetween', () => {
   it('reports only the highest stage when several are crossed', () => {
     const u = unlocksBetween(60, 260);
     assert.equal(u.stage?.id, 'grown');
-    assert.deepEqual(ids(u.items), ['boat', 'bow', 'snail', 'stones', 'goldfish', 'scarf']);
+    assert.deepEqual(ids(u.items), ['boat', 'bow', 'snail', 'stones', 'goldfish', 'scarf', 'glasses']);
   });
 
   it('reports a stage with no item', () => {
@@ -526,7 +528,8 @@ describe('nextGoal', () => {
     [100, 'Stepping stones', 125],
     [125, 'Goldfish', 150],
     [150, 'Scarf', 180],
-    [180, 'Grown duck', 250],
+    [180, 'Blue-light glasses', 220],
+    [220, 'Grown duck', 250],
     [250, 'Pond legend', 750],
   ];
 
@@ -598,6 +601,7 @@ describe('describeDuck', () => {
 
   it('describes what the duck is wearing', () => {
     assert.equal(describeDuck(pond({ total: 75, wearing: 'beanie' })), 'Jenny, a young duck wearing a beanie');
+    assert.equal(describeDuck(pond({ total: 220, wearing: 'glasses' })), 'Jenny, a young duck wearing blue-light glasses');
     assert.equal(describeDuck(pond({ total: 90, wearing: 'bow' })), 'Jenny, a young duck wearing a bow');
     assert.equal(describeDuck(pond({ total: 750, wearing: 'scarf' })), 'Jenny, a pond legend wearing a scarf');
   });
@@ -605,8 +609,8 @@ describe('describeDuck', () => {
   it('reads right with every wearable item', () => {
     for (const item of ITEMS.filter((i) => i.kind === 'wear')) {
       const lower = item.name.toLowerCase();
-      const article = /^[aeiou]/.test(lower) ? 'an' : 'a';
-      assert.equal(describeDuck(pond({ total: 1000, wearing: item.id })), `Jenny, a pond legend wearing ${article} ${lower}`);
+      const article = item.plural ? '' : /^[aeiou]/.test(lower) ? 'an ' : 'a ';
+      assert.equal(describeDuck(pond({ total: 1000, wearing: item.id })), `Jenny, a pond legend wearing ${article}${lower}`);
     }
   });
 

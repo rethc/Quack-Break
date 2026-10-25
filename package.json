@@ -43,7 +43,9 @@
     "quack": "node scripts/make-quack.mjs",
     "build:dev:android": "npx eas-cli@latest build --profile development --platform android",
     "build:dev:ios": "npx eas-cli@latest build --profile development --platform ios",
-    "tones": "node scripts/make-tones.mjs"
+    "tones": "node scripts/make-tones.mjs",
+    "duck:check": "node scripts/check-duck-art.mjs",
+    "duck:from-sheet": "node scripts/duck-from-sheet/run.mjs"
   },
   "private": true,
   "overrides": {

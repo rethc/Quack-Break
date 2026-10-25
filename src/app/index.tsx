@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { Duck, ENTER_MS, type DuckMode } from '@/components/duck/Duck';
-import { BEAK_FROM_CENTRE } from '@/components/duck/shapes';
+import { BEAK_FROM_CENTRE } from '@/components/duck/layout';
 import { GearIcon, IconButton } from '@/components/Icons';
 import { DuckBubble } from '@/components/DuckBubble';
 import { PondProgress, STAGE_SCALE } from '@/components/pond/PondProgress';
@@ -128,7 +128,7 @@ function HomeScreen() {
             waiting: 'idle',
             due: 'attention',
             quiet: 'sleep',
-            break: 'idle',
+            break: 'rest',
             paused: 'idle',
           } as const
         )[status];
@@ -249,7 +249,7 @@ function HomeScreen() {
 
           <View style={styles.pond}>
             <PondScene height={POND_H} sky={false} items={pondItems}>
-              <Duck mode={duckMode} size={duckSize} stage={stage.id} wearing={pond.wearing} who={describeDuck(pond)} />
+              <Duck mode={duckMode} size={duckSize} wearing={pond.wearing} who={describeDuck(pond)} />
             </PondScene>
           </View>
 

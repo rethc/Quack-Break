@@ -49,7 +49,7 @@ How it works
 • That's it. Back to what you were doing.
 
 Your pond grows with every break
-Each break you take helps Jenny grow from a duckling into a pond legend. Along the way you'll find lily pads, a frog friend, a paper boat, a goldfish and more, plus a beanie, a bow and a scarf for your duck to wear. You can give your duck a new name too.
+Each break you take helps Jenny grow from a duckling into a pond legend. Along the way you'll find lily pads, a frog friend, a paper boat, a goldfish and more, plus a beanie, a bow, a scarf and blue-light glasses for your duck to wear. You can give your duck a new name too.
 
 Make it yours
 • Choose how often to be reminded, from every 5 to every 90 minutes.

@@ -68,7 +68,7 @@ export default function PondScreen() {
 
       <View style={[styles.summary, { backgroundColor: colors.card }]}>
         <View style={[styles.duckCircle, { backgroundColor: colors.heroSky }]}>
-          <Duck mode="idle" size={76} stage={stage.id} wearing={pond.wearing} who={describeDuck(pond)} />
+          <Duck mode="idle" size={76} wearing={pond.wearing} who={describeDuck(pond)} />
         </View>
         <View style={styles.summaryText}>
           <TextInput
@@ -125,6 +125,10 @@ export default function PondScreen() {
               wearNow(item.id);
             }}
           />
+        ))}
+        {/* Empty spaces fill the last row, so a tile left on its own keeps the same width as the rest. */}
+        {Array.from({ length: (3 - (ITEMS.length % 3)) % 3 }, (_, i) => (
+          <View key={`space-${i}`} style={styles.space} />
         ))}
       </View>
 
@@ -218,6 +222,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
+  space: { flexBasis: '30%', flexGrow: 1 },
   art: { width: 56, height: 56, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   tileName: { fontFamily: fonts.semibold },
   status: { flexDirection: 'row', alignItems: 'center', gap: 4 },

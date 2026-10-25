@@ -1,9 +1,12 @@
 // Drawings for the things the duck finds: tile art (64 x 64) for the pond screen and unlock card,
 // and placed versions inside the pond scene (its 360 x 240 drawing). Plain SVG shapes, no images.
+import { Image } from 'react-native';
 import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 
 import type { ItemId } from '@/core/pond';
 import { useTheme } from '@/theme';
+
+import { wearIcons } from '../duck/pictures';
 
 const FROG = '#7CC47F';
 const FROG_DARK = '#3F7A44';
@@ -139,7 +142,7 @@ function TileShapes({ id, notch, reed, reedDark }: { id: ItemId; notch: string; 
   }
 }
 
-/** An item on its own, for tiles and cards. Locked items are drawn faded. */
+/** An item on its own, for tiles and cards. Locked items are drawn faded. Things to wear use their pictures. */
 export function ItemArt({
   id,
   size = 44,
@@ -152,6 +155,17 @@ export function ItemArt({
   behind: string;
 }) {
   const { colors } = useTheme();
+  const picture = wearIcons[id];
+  if (picture) {
+    return (
+      <Image
+        source={picture}
+        style={{ width: size, height: size, opacity: dim ? 0.3 : 1 }}
+        resizeMode="contain"
+        fadeDuration={0}
+      />
+    );
+  }
   return (
     <Svg width={size} height={size} viewBox="0 0 64 64" opacity={dim ? 0.3 : 1}>
       <TileShapes id={id} notch={behind} reed={colors.reed} reedDark={colors.reedDark} />

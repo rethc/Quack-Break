@@ -21,7 +21,8 @@
     "android": {
       "package": "com.chesd.quackbreak",
       "adaptiveIcon": {
-        "backgroundColor": "#A8DCEF",
+        "backgroundColor": "#82CCF5",
+        "backgroundImage": "./assets/android-icon-background.png",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
@@ -126,9 +127,9 @@
         }
       },
       "eas": {
-        "projectId": "9aa40dd2-47ed-4e10-a241-6786febbff10"
+        "projectId": "00f33119-b4a1-476d-8e80-ce6e0e819f38"
       }
     },
-    "owner": "rethc"
+    "owner": "chesda"
   }
 }

@@ -27,10 +27,14 @@ export type ItemId =
   | 'snail'
   | 'stones'
   | 'goldfish'
-  | 'scarf';
+  | 'scarf'
+  | 'glasses';
 
-/** "pond" items appear in the pond; "wear" items are hats and scarves the duck can wear. */
-export type Item = { id: ItemId; name: string; at: number; kind: 'pond' | 'wear' };
+/**
+ * "pond" items appear in the pond; "wear" items are things the duck can wear (one at a time).
+ * `plural` names take no "a": "wearing blue-light glasses".
+ */
+export type Item = { id: ItemId; name: string; at: number; kind: 'pond' | 'wear'; plural?: true };
 
 /** Things to find, in the order they unlock. */
 export const ITEMS: readonly Item[] = [
@@ -46,6 +50,7 @@ export const ITEMS: readonly Item[] = [
   { id: 'stones', name: 'Stepping stones', at: 125, kind: 'pond' },
   { id: 'goldfish', name: 'Goldfish', at: 150, kind: 'pond' },
   { id: 'scarf', name: 'Scarf', at: 180, kind: 'wear' },
+  { id: 'glasses', name: 'Blue-light glasses', at: 220, kind: 'wear', plural: true },
 ];
 
 export const DEFAULT_DUCK_NAME = 'Jenny';
@@ -64,7 +69,7 @@ export type PondState = {
   /** When the last counted break ended (0 if none). */
   lastAt: number;
   name: string;
-  /** The hat or scarf the duck is wearing. */
+  /** What the duck is wearing: a hat, bow, scarf or glasses. */
   wearing: ItemId | null;
   /** `total` when the user last looked at their pond, to mark what's new. */
   seen: number;
@@ -203,7 +208,9 @@ export function nextGoal(total: number): { label: string; at: number; left: numb
 export function describeDuck(pond: PondState): string {
   const stage = stageFor(pond.total).name.toLowerCase();
   const article = /^[aeiou]/.test(stage) ? 'an' : 'a';
-  const wearing = pond.wearing ? ` wearing a ${itemById(pond.wearing).name.toLowerCase()}` : '';
+  const worn = pond.wearing ? itemById(pond.wearing) : null;
+  const name = worn?.name.toLowerCase() ?? '';
+  const wearing = worn ? ` wearing ${worn.plural ? '' : /^[aeiou]/.test(name) ? 'an ' : 'a '}${name}` : '';
   return `${pond.name}, ${article} ${stage}${wearing}`;
 }
 
