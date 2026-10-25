@@ -40,16 +40,16 @@ Quack Break is a small, friendly app that reminds you to rest your eyes when you
 
 It is handy for long days at a computer, studying, gaming, or reading on your phone.
 
-It follows the 20-20-20 rule: every 20 minutes, look at something about 20 feet (6 meters) away for 20 seconds. Pip the duck keeps time and gives you a gentle quack when it's break time.
+It follows the 20-20-20 rule: every 20 minutes, look at something about 20 feet (6 meters) away for 20 seconds. Jenny the duck keeps time and gives you a gentle quack when it's break time.
 
 How it works
-• Pip reminds you every 20 minutes.
+• Jenny reminds you every 20 minutes.
 • Tap Start break and look at something far away.
 • A ring counts down your 20 seconds.
 • That's it. Back to what you were doing.
 
 Your pond grows with every break
-Each break you take helps Pip grow from a duckling into a pond legend. Along the way you'll find lily pads, a frog friend, a paper boat, a goldfish and more, plus a beanie, a bow and a scarf for your duck to wear. You can give your duck a new name too.
+Each break you take helps Jenny grow from a duckling into a pond legend. Along the way you'll find lily pads, a frog friend, a paper boat, a goldfish and more, plus a beanie, a bow and a scarf for your duck to wear. You can give your duck a new name too.
 
 Make it yours
 • Choose how often to be reminded, from every 5 to every 90 minutes.
@@ -94,7 +94,7 @@ The screenshots are the real app with a short headline on top. The first three m
 ### Release notes for the first version (500 characters max)
 
 ```
-Hello from Pip! Quack Break reminds you to rest your eyes with the 20-20-20 rule. Take a break, look far away, and watch your pond grow.
+Hello from Jenny! Quack Break reminds you to rest your eyes with the 20-20-20 rule. Take a break, look far away, and watch your pond grow.
 ```
 
 ### Category and contact

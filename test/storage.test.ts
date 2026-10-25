@@ -219,7 +219,7 @@ describe('storage: checking what is read', () => {
     const raw: Record<string, unknown> = { ...appData(), days: { '2026-10-20': 3, '2026-10-21': 4, junk: 9 } };
     delete raw.pond;
     const { storage } = await setup(t, { [STATE_FILE]: JSON.stringify(raw) });
-    assert.deepEqual(storage.getData().pond, { total: 7, lastAt: 0, name: 'Pip', wearing: null, seen: 7 });
+    assert.deepEqual(storage.getData().pond, { total: 7, lastAt: 0, name: 'Jenny', wearing: null, seen: 7 });
   });
 
   it('a saved pond is kept', async (t) => {

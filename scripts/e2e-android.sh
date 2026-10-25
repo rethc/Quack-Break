@@ -367,7 +367,7 @@ setstate "$QUIET_AWAY"
 open_app
 check "home: countdown" wait_for "Next break in" 10
 check "home: warns that reminders may run late" on_screen "Reminders may run late"
-check "home: duckling to start with" on_screen "Pip, a duckling"
+check "home: duckling to start with" on_screen "Jenny, a duckling"
 check "home: first goal is 5 breaks away" on_screen "Something new in 5 breaks"
 check "home: no breaks yet" on_screen "No breaks yet today"
 sleep 15
@@ -540,9 +540,9 @@ check "test reminder: snooze works with the app closed" eq "$(state_js 'd.timer.
 collapse_shade
 
 # ---------- 10. The pond ----------
-setstate "$QUIET_AWAY"'; d.pond={total:95,lastAt:Date.now()-600000,name:"Pip",wearing:"beanie",seen:60}'
+setstate "$QUIET_AWAY"'; d.pond={total:95,lastAt:Date.now()-600000,name:"Jenny",wearing:"beanie",seen:60}'
 open_app
-check "home: young duck wearing a beanie" wait_for "Pip, a young duck wearing a beanie" 10
+check "home: young duck wearing a beanie" wait_for "Jenny, a young duck wearing a beanie" 10
 check "home: new things to see" on_screen "Your pond. Something new"
 tap "Your pond. Something new"
 check "pond: opens" wait_for "Found so far" 5

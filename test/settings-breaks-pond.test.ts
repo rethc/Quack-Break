@@ -144,7 +144,7 @@ describe('break actions', () => {
 
 describe('pond actions', () => {
   const pond = (total: number, extra: Record<string, unknown> = {}) =>
-    appData({ pond: { total, lastAt: 0, name: 'Pip', wearing: null, seen: total, ...extra } });
+    appData({ pond: { total, lastAt: 0, name: 'Jenny', wearing: null, seen: total, ...extra } });
 
   it('wearNow: an unlocked hat goes on, and off again; a locked one is ignored without writing', async (t) => {
     const { w } = await setup(t, pond(45));
@@ -164,7 +164,7 @@ describe('pond actions', () => {
     p.renameNow('  Sir   Quacks​ a lot  ');
     assert.equal(w.saved().pond.name, 'Sir Quacks a lot');
     p.renameNow('   ');
-    assert.equal(w.saved().pond.name, 'Pip');
+    assert.equal(w.saved().pond.name, 'Jenny');
   });
 
   it('markPondSeenNow marks new finds as seen; with nothing new it writes nothing', async (t) => {

@@ -48,7 +48,7 @@ export const ITEMS: readonly Item[] = [
   { id: 'scarf', name: 'Scarf', at: 180, kind: 'wear' },
 ];
 
-export const DEFAULT_DUCK_NAME = 'Pip';
+export const DEFAULT_DUCK_NAME = 'Jenny';
 export const MAX_NAME_LENGTH = 20;
 
 /**
@@ -199,7 +199,7 @@ export function nextGoal(total: number): { label: string; at: number; left: numb
   return { ...goal, left: goal.at - total, progress: (total - from) / (goal.at - from) };
 }
 
-/** "Pip is a young duck" and the like. */
+/** "Jenny is a young duck" and the like. */
 export function describeDuck(pond: PondState): string {
   const stage = stageFor(pond.total).name.toLowerCase();
   const article = /^[aeiou]/.test(stage) ? 'an' : 'a';

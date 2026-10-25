@@ -180,7 +180,7 @@ export default function BreakScreen() {
   );
 }
 
-/** "New in your pond: Frog friend" or "Pip grew into a young duck", after a break that unlocked something. */
+/** "New in your pond: Frog friend" or "Jenny grew into a young duck", after a break that unlocked something. */
 function Unlocked({ unlocks, duckName }: { unlocks: ReturnType<typeof unlocksBetween>; duckName: string }) {
   const { colors } = useTheme();
   const { stage, items } = unlocks;

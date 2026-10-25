@@ -24,7 +24,7 @@ import { duckColors as C, duckPaths as D, pivots } from './shapes';
 
 export type DuckMode = 'enter' | 'idle' | 'attention' | 'flap' | 'shrug' | 'sleep';
 
-/** What the duck is doing, after its description ("Pip, a young duck, ..."). */
+/** What the duck is doing, after its description ("Jenny, a young duck, ..."). */
 const actions: Record<DuckMode, string> = {
   enter: 'walks in',
   idle: 'is floating on the pond',
@@ -62,7 +62,7 @@ export function Duck({
 }: {
   mode: DuckMode;
   size?: number;
-  /** For screen readers, e.g. "Pip, a young duck". */
+  /** For screen readers, e.g. "Jenny, a young duck". */
   who?: string;
   stage?: StageId;
   wearing?: ItemId | null;

@@ -383,7 +383,7 @@ const NAMES = [
   `👨${ZWJ}👩${ZWJ}👧 family`,
   `${'x'.repeat(19)} y`,
   `${'🦆'.repeat(19)} z`,
-  'Pip',
+  'Jenny',
 ];
 
 /** A quiet-hours time: mostly the Settings screen's 30-minute grid, sometimes near the clock changes or off the grid. */
@@ -1236,9 +1236,9 @@ describe('fuzz: found cases, shrunk to minimal regression tests', () => {
     const family = `\u{1F468}${ZWJ}\u{1F469}${ZWJ}\u{1F467}`; // family: man + ZWJ + woman + ZWJ + girl, one emoji
     // cleanName strips invisible characters, but must keep the zero-width joiner that holds these
     // emoji together: otherwise the astronaut becomes a woman and a rocket, and the family three
-    // separate people. A name made only of joiners still falls back to Pip.
-    assert.equal(renameDuck(onboarded(DEFAULT_SETTINGS, Date.UTC(2026, 5, 10)), `${astronaut} Pip`).pond.name, `${astronaut} Pip`);
+    // separate people. A name made only of joiners still falls back to Jenny.
+    assert.equal(renameDuck(onboarded(DEFAULT_SETTINGS, Date.UTC(2026, 5, 10)), `${astronaut} Jenny`).pond.name, `${astronaut} Jenny`);
     assert.equal(cleanName(`${family} family`), `${family} family`);
-    assert.equal(cleanName(`${ZWJ}${ZWJ}`), 'Pip');
+    assert.equal(cleanName(`${ZWJ}${ZWJ}`), 'Jenny');
   });
 });

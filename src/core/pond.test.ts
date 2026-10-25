@@ -224,7 +224,7 @@ describe('pondFrom', () => {
 
   it('gives an older save (no pond yet) every break it already took, all marked seen', () => {
     const p = pondFrom(undefined, days);
-    assert.deepEqual(p, { total: 15, lastAt: 0, name: 'Pip', wearing: null, seen: 15 });
+    assert.deepEqual(p, { total: 15, lastAt: 0, name: 'Jenny', wearing: null, seen: 15 });
     assert.equal(stageFor(p.total).id, 'fluffy');
     assert.equal(hasNew(p), false);
   });
@@ -266,7 +266,7 @@ describe('pondFrom', () => {
   });
 
   it('drops fields it does not know', () => {
-    const p = pondFrom({ total: 5, lastAt: T0, name: 'Pip', wearing: null, seen: 5, extra: 1, v: 2 }, {});
+    const p = pondFrom({ total: 5, lastAt: T0, name: 'Jenny', wearing: null, seen: 5, extra: 1, v: 2 }, {});
     assert.deepEqual(Object.keys(p).sort(), ['lastAt', 'name', 'seen', 'total', 'wearing']);
   });
 
@@ -321,12 +321,12 @@ describe('pondFrom', () => {
     // Like wear(), pondFrom only accepts items the duck can wear.
     const p = pondFrom({ total: 100, wearing: 'frog' }, {});
     assert.equal(p.wearing, null);
-    assert.equal(describeDuck(p), 'Pip, a young duck');
+    assert.equal(describeDuck(p), 'Jenny, a young duck');
   });
 
   it('replaces a bad name and cleans a messy one', () => {
-    for (const name of [undefined, null, '', '   ', 42, {}, ['Pip']]) {
-      assert.equal(pondFrom({ total: 1, name }, {}).name, 'Pip', String(name));
+    for (const name of [undefined, null, '', '   ', 42, {}, ['Jenny']]) {
+      assert.equal(pondFrom({ total: 1, name }, {}).name, 'Jenny', String(name));
     }
     assert.equal(pondFrom({ total: 1, name: '  Mr   Quack ' }, {}).name, 'Mr Quack');
     assert.equal(pondFrom({ total: 1, name: 'x'.repeat(30) }, {}).name, 'x'.repeat(20));
@@ -342,14 +342,14 @@ describe('pondFrom', () => {
 
 describe('cleanName', () => {
   it('trims and collapses spaces, tabs and new lines', () => {
-    assert.equal(cleanName('  Pip  '), 'Pip');
+    assert.equal(cleanName('  Jenny  '), 'Jenny');
     assert.equal(cleanName('Mr    Quack'), 'Mr Quack');
     assert.equal(cleanName('\tMr\n\n Quack\r\n'), 'Mr Quack');
-    assert.equal(cleanName(' Pip '), 'Pip');
+    assert.equal(cleanName(' Jenny '), 'Jenny');
   });
 
   it('keeps an ordinary name as it is', () => {
-    for (const name of ['Pip', 'Sir Quacks-a-Lot', 'Ducky 2', "D'Artagnan", 'Zoë']) {
+    for (const name of ['Jenny', 'Sir Quacks-a-Lot', 'Ducky 2', "D'Artagnan", 'Zoë']) {
       assert.equal(cleanName(name), name);
     }
   });
@@ -384,13 +384,13 @@ describe('cleanName', () => {
     assert.equal(mixed.isWellFormed(), true);
   });
 
-  it('falls back to Pip for an empty or blank name', () => {
+  it('falls back to Jenny for an empty or blank name', () => {
     for (const blank of ['', ' ', '     ', '\t\n', '   ']) assert.equal(cleanName(blank), DEFAULT_DUCK_NAME);
   });
 
-  it('falls back to Pip for anything that is not text', () => {
-    for (const junk of [undefined, null, 42, 0, true, {}, [], ['Pip'], Symbol('x')]) {
-      assert.equal(cleanName(junk), 'Pip', String(junk));
+  it('falls back to Jenny for anything that is not text', () => {
+    for (const junk of [undefined, null, 42, 0, true, {}, [], ['Jenny'], Symbol('x')]) {
+      assert.equal(cleanName(junk), 'Jenny', String(junk));
     }
   });
 
@@ -406,12 +406,12 @@ describe('rename', () => {
     const p = pond({ total: 50, wearing: 'beanie', seen: 50 });
     const renamed = rename(p, '  Sir   Quacks  ');
     assert.deepEqual(renamed, { ...p, name: 'Sir Quacks' });
-    assert.equal(p.name, 'Pip');
+    assert.equal(p.name, 'Jenny');
   });
 
   it('never leaves the duck without a name', () => {
-    assert.equal(rename(pond({ name: 'Quackers' }), '   ').name, 'Pip');
-    assert.equal(rename(pond({ name: 'Quackers' }), '').name, 'Pip');
+    assert.equal(rename(pond({ name: 'Quackers' }), '   ').name, 'Jenny');
+    assert.equal(rename(pond({ name: 'Quackers' }), '').name, 'Jenny');
   });
 
   it('returns the same pond when the name does not change, so nothing is saved', () => {
@@ -581,32 +581,32 @@ describe('nextGoal', () => {
 
 describe('describeDuck', () => {
   it('describes each stage', () => {
-    assert.equal(describeDuck(pond({ total: 0 })), 'Pip, a duckling');
-    assert.equal(describeDuck(pond({ total: 15 })), 'Pip, a fluffy duckling');
-    assert.equal(describeDuck(pond({ total: 75 })), 'Pip, a young duck');
-    assert.equal(describeDuck(pond({ total: 250 })), 'Pip, a grown duck');
-    assert.equal(describeDuck(pond({ total: 750 })), 'Pip, a pond legend');
+    assert.equal(describeDuck(pond({ total: 0 })), 'Jenny, a duckling');
+    assert.equal(describeDuck(pond({ total: 15 })), 'Jenny, a fluffy duckling');
+    assert.equal(describeDuck(pond({ total: 75 })), 'Jenny, a young duck');
+    assert.equal(describeDuck(pond({ total: 250 })), 'Jenny, a grown duck');
+    assert.equal(describeDuck(pond({ total: 750 })), 'Jenny, a pond legend');
   });
 
   it('uses "an" before a vowel and "a" otherwise, for every stage', () => {
     for (const s of STAGES) {
       const lower = s.name.toLowerCase();
       const article = /^[aeiou]/.test(lower) ? 'an' : 'a';
-      assert.equal(describeDuck(pond({ total: s.from })), `Pip, ${article} ${lower}`);
+      assert.equal(describeDuck(pond({ total: s.from })), `Jenny, ${article} ${lower}`);
     }
   });
 
   it('describes what the duck is wearing', () => {
-    assert.equal(describeDuck(pond({ total: 75, wearing: 'beanie' })), 'Pip, a young duck wearing a beanie');
-    assert.equal(describeDuck(pond({ total: 90, wearing: 'bow' })), 'Pip, a young duck wearing a bow');
-    assert.equal(describeDuck(pond({ total: 750, wearing: 'scarf' })), 'Pip, a pond legend wearing a scarf');
+    assert.equal(describeDuck(pond({ total: 75, wearing: 'beanie' })), 'Jenny, a young duck wearing a beanie');
+    assert.equal(describeDuck(pond({ total: 90, wearing: 'bow' })), 'Jenny, a young duck wearing a bow');
+    assert.equal(describeDuck(pond({ total: 750, wearing: 'scarf' })), 'Jenny, a pond legend wearing a scarf');
   });
 
   it('reads right with every wearable item', () => {
     for (const item of ITEMS.filter((i) => i.kind === 'wear')) {
       const lower = item.name.toLowerCase();
       const article = /^[aeiou]/.test(lower) ? 'an' : 'a';
-      assert.equal(describeDuck(pond({ total: 1000, wearing: item.id })), `Pip, a pond legend wearing ${article} ${lower}`);
+      assert.equal(describeDuck(pond({ total: 1000, wearing: item.id })), `Jenny, a pond legend wearing ${article} ${lower}`);
     }
   });
 
@@ -685,10 +685,10 @@ describe('invariants', () => {
     }
   });
 
-  it('starts every duck as Pip with nothing, in a fresh object each time', () => {
+  it('starts every duck as Jenny with nothing, in a fresh object each time', () => {
     const a = defaultPond();
-    assert.deepEqual(a, { total: 0, lastAt: 0, name: 'Pip', wearing: null, seen: 0 });
-    assert.equal(DEFAULT_DUCK_NAME, 'Pip');
+    assert.deepEqual(a, { total: 0, lastAt: 0, name: 'Jenny', wearing: null, seen: 0 });
+    assert.equal(DEFAULT_DUCK_NAME, 'Jenny');
     assert.equal(cleanName(DEFAULT_DUCK_NAME), DEFAULT_DUCK_NAME);
     a.total = 99;
     assert.equal(defaultPond().total, 0);
