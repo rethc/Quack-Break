@@ -38,6 +38,8 @@ A friendly duck that reminds you to rest your eyes with the 20-20-20 rule
 ```
 Quack Break is a small, friendly app that reminds you to rest your eyes when you spend a long time looking at a screen.
 
+It is handy for long days at a computer, studying, gaming, or reading on your phone.
+
 It follows the 20-20-20 rule: every 20 minutes, look at something about 20 feet (6 meters) away for 20 seconds. Pip the duck keeps time and gives you a gentle quack when it's break time.
 
 How it works
@@ -75,17 +77,25 @@ Quack Break is a reminder app. It is not a medical device and does not diagnose,
 | --- | --- |
 | App icon | `icon-512.png` |
 | Feature graphic | `feature-graphic.png` |
-| Phone screenshots, in this order | `screenshots/01-home.png` to `07-settings.png` |
+| Phone screenshots, in this order | `screenshots/01-reminder.png` to `07-settings.png` |
 
-Alt text for the screenshots, if asked:
+The screenshots are the real app with a short headline on top. The first three matter most: many people only see those before deciding. They meet Google's rules for recommendation spots: 1080 x 1920, at least four, headline text well under a fifth of each picture, and no phone frames.
 
-1. Home screen with a duck by a pond and the time until the next break
-2. A break in progress with a ring counting down the seconds
-3. Break done, with a new bow unlocked for the duck
-4. The pond collection showing items found so far
-5. Home at night when a break is due, with Start, Snooze and Skip
-6. A break at night with fireflies over the pond
-7. Settings for the 20-20-20 rule, snooze and quiet hours
+| Screenshot | Headline | Alt text, if asked |
+| --- | --- | --- |
+| `01-reminder.png` | A friendly reminder to rest your eyes | Home screen with a duck by a pond and the time until the next break |
+| `02-look-away.png` | Look far away for 20 seconds | A break in progress with a ring counting down the seconds |
+| `03-grow.png` | Every break helps your duck grow | Break done, with a new bow unlocked for the duck |
+| `04-pond.png` | Find frogs, boats, bows and more | The pond collection showing items found so far |
+| `05-notification.png` | Your next break, right in your notifications | A notification counting down to the next break |
+| `06-night.png` | A calm look for late nights | Home at night when a break is due, with Start, Snooze and Skip |
+| `07-settings.png` | Set your own timing and sounds | Settings for the 20-20-20 rule, snooze, quiet hours and sounds |
+
+### Release notes for the first version (500 characters max)
+
+```
+Hello from Pip! Quack Break reminds you to rest your eyes with the 20-20-20 rule. Take a break, look far away, and watch your pond grow.
+```
 
 ### Category and contact
 
@@ -114,3 +124,17 @@ In Play Console, find the App content page under Policy.
 | Health apps | Tick "Stress Management, Relaxation, Mental Acuity". It is the closest fit for a rest-break reminder. If you'd rather not, "My app doesn't provide any health features" is the other option. |
 
 Exact alarms need no form. The app uses the version of that permission that the user switches on in "Alarms & reminders". Google only asks for a form for the other version, which apps get automatically.
+
+---
+
+## Getting noticed
+
+Google chooses which apps to feature. You can nominate yours with its featuring form at support.google.com/googleplay/contact/featuring_review. For a new app, send it at least four weeks before the launch date you want, after the build is uploaded to Play Console. It doesn't guarantee anything.
+
+What Google looks at, and where this app stands:
+
+- **A complete, sharp listing.** Done: icon, feature graphic, seven 1080 x 1920 screenshots, a clear short description.
+- **Few crashes and freezes.** Google shows these under Android vitals in Play Console. The app passed 5,000 random taps with no crash, so watch that page after launch.
+- **Ratings and reviews.** Ask your 12 testers to leave honest reviews once the app is public. Reply to reviews in Play Console.
+- **Up-to-date Android.** Done: the app targets Android 16.
+- **Search.** People find apps by words in the name and descriptions. The listing uses the words people search for: eye break, rest your eyes, 20-20-20 rule, screen, reminder.
